@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Neural Network — Worked Example</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --surface2: #f3f2ee;
+    --border: rgba(0,0,0,0.1);
+    --border-s: rgba(0,0,0,0.2);
+    --text: #1a1a1a;
+    --text2: #6b6b6b;
+    --text3: #999;
+    --accent: #185FA5;
+    --accent-bg: #E6F1FB;
+    --good: #0F6E56;
+    --good-bg: #E1F5EE;
+    --coral: #D85A30;
+    --coral-bg: #FAECE7;
+    --purple: #534AB7;
+    --purple-bg: #EEEDFE;
+    --amber: #854F0B;
+    --amber-bg: #FAEEDA;
+    --bad: #A32D2D;
+    --bad-bg: #FCEBEB;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+    --r: 10px;
+    --rs: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111113;
+      --surface: #1c1c1f;
+      --surface2: #252528;
+      --border: rgba(255,255,255,0.08);
+      --border-s: rgba(255,255,255,0.15);
+      --text: #e4e4e4;
+      --text2: #8a8a8a;
+      --text3: #5a5a5a;
+      --accent: #85B7EB;
+      --accent-bg: #0C447C;
+      --good: #5DCAA5;
+      --good-bg: #085041;
+      --coral: #F0997B;
+      --coral-bg: #4A1B0C;
+      --purple: #AFA9EC;
+      --purple-bg: #26215C;
+      --amber: #FAC775;
+      --amber-bg: #412402;
+      --bad: #F09595;
+      --bad-bg: #501313;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.7; padding: 2.5rem 1rem; }
+  .c { max-width: 780px; margin: 0 auto; }
+
+  h1 { font-size: 1.7rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+  .sub { font-size: 0.9rem; color: var(--text2); margin-bottom: 2rem; }
+  h2 { font-size: 1.2rem; font-weight: 600; margin: 2.5rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1rem; font-weight: 600; margin: 1.75rem 0 0.5rem; }
+  h4 { font-size: 0.88rem; font-weight: 600; color: var(--text2); margin: 1.25rem 0 0.4rem; }
+  p { font-size: 0.9rem; color: var(--text2); margin-bottom: 0.75rem; }
+  p strong { color: var(--text); font-weight: 500; }
+
+  /* --- Equation blocks --- */
+  .eq-block {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 2;
+    color: var(--text);
+    padding: 2px 0 2px 14px;
+    border-left: 2.5px solid var(--border-s);
+    margin: 6px 0;
+  }
+
+  /* --- Colored math boxes --- */
+  .mb { border-radius: var(--rs); padding: 10px 14px; font-family: var(--mono); font-size: 0.8rem; line-height: 2; margin: 0.75rem 0; }
+  .mb.blue { background: var(--accent-bg); color: var(--accent); }
+  .mb.green { background: var(--good-bg); color: var(--good); }
+  .mb.coral { background: var(--coral-bg); color: var(--coral); }
+  .mb.purple { background: var(--purple-bg); color: var(--purple); }
+  .mb.amber { background: var(--amber-bg); color: var(--amber); }
+  .mb.bad { background: var(--bad-bg); color: var(--bad); }
+
+  /* --- Tags --- */
+  .tag { display: inline-block; background: var(--surface2); border-radius: var(--rs); padding: 3px 12px; font-size: 0.78rem; font-weight: 500; color: var(--text2); margin: 0.75rem 0 0.4rem; }
+  .tag.accent { background: var(--accent-bg); color: var(--accent); }
+
+  /* --- Table --- */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 1rem 0; }
+  .data-table th { text-align: left; padding: 8px 12px; font-weight: 600; font-size: 0.78rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 2px solid var(--border-s); }
+  .data-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 0.82rem; }
+  .data-table tr:last-child td { border-bottom: 2px solid var(--border-s); font-weight: 600; }
+
+  /* --- Weight grid --- */
+  .wg { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 0.75rem 0; }
+  .wi { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rs); padding: 8px 12px; }
+  .wi-label { font-size: 0.68rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+  .wi.changed { border-color: var(--accent); }
+  label.wi-label { display: block; }
+  .wi-in { display: block; width: 100%; margin-top: 2px; padding: 3px 6px; font-family: var(--mono); font-size: 0.85rem; font-weight: 500; color: var(--text); background: var(--surface2); border: 1px solid var(--border-s); border-radius: 4px; }
+  .wi-in:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .wi-in[aria-invalid="true"] { color: var(--bad); background: var(--bad-bg); border-color: var(--bad); }
+  .w-restore { margin-left: 6px; padding: 2px 10px; font: inherit; font-size: 0.8rem; font-weight: 500; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: var(--rs); cursor: pointer; }
+  .nn-wlabel { cursor: pointer; }
+  .nn-wlabel:hover { text-decoration: underline; }
+  body.readonly .wi-in, body.readonly .data-table td .cell { background: transparent; border-color: transparent; }
+  body.readonly .nn-wlabel { cursor: default; }
+  body.readonly .nn-wlabel:hover { text-decoration: none; }
+  .callout a { color: inherit; font-weight: 600; }
+  p a { color: var(--accent); }
+  .table-wrap { overflow-x: auto; }
+  .data-table td .cell { width: 100%; min-width: 3.5em; padding: 3px 6px; font: inherit; color: var(--text); background: var(--surface2); border: 1px solid var(--border-s); border-radius: 4px; }
+  .data-table td .cell:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .data-table td .cell.calc { color: var(--text2); } /* grade calculated from the W row */
+  .data-table td .cell.changed { border-color: var(--accent); }
+  .data-table td .cell[aria-invalid="true"] { color: var(--bad); background: var(--bad-bg); border-color: var(--bad); }
+
+  /* --- Callout --- */
+  .callout { padding: 10px 14px; font-size: 0.85rem; margin: 1rem 0; border-radius: 0; }
+  .callout.info { background: var(--accent-bg); color: var(--accent); border-left: 3px solid var(--accent); }
+  .callout.warn { background: var(--amber-bg); color: var(--amber); border-left: 3px solid var(--amber); }
+
+  /* --- Divider --- */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  /* --- Section label --- */
+  .sec-note { font-size: 0.78rem; color: var(--text3); font-style: italic; margin: 0.25rem 0 0.75rem; }
+
+  /* --- Link cards --- */
+  .link-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 2rem 0; }
+  .link-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1.25rem;
+    text-decoration: none;
+    transition: border-color 0.15s;
+  }
+  .link-card:hover { border-color: var(--accent); }
+  .link-card .lc-title { font-size: 0.95rem; font-weight: 600; color: var(--accent); margin-bottom: 0.25rem; }
+  .link-card .lc-desc { font-size: 0.8rem; color: var(--text2); line-height: 1.5; }
+
+  /* --- TOC --- */
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem 1.25rem; margin-bottom: 2rem; }
+  .toc-t { font-size: 0.75rem; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+  .toc a { display: block; font-size: 0.85rem; color: var(--accent); text-decoration: none; padding: 3px 0; }
+  .toc a:hover { text-decoration: underline; }
+
+  .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.72rem; color: var(--text3); }
+
+  @media (max-width: 600px) {
+    .link-cards { grid-template-columns: 1fr; }
+    .wg { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+    .wi-in, .data-table td .cell { font-size: 16px; } /* smaller text makes iOS Safari zoom in on focus */
+    .data-table th, .data-table td { padding: 6px 4px; }
+    .data-table td .cell { padding: 3px; }
+    .data-table th { font-size: 0.68rem; letter-spacing: 0; }
+    .data-table th:first-child, .data-table td:first-child { width: 1%; } /* narrow "Student" column */
+    .data-table th:last-child { width: 28%; } /* calculated grades need the most room */
+  }
+</style>
+</head>
+<body>
+<div class="c">
+
+<h1>Simple neural network — worked example</h1>
+<p class="sub">3 inputs, 2 hidden neurons (ReLU), 1 linear output — forward pass, backpropagation, and batched gradient descent fully worked through</p>
+
+<div class="toc">
+  <div class="toc-t">Contents</div>
+  <a href="#network">1. Network and weights</a>
+  <a href="#data">2. Training data</a>
+  <a href="#forward-eqs">3. Forward pass equations</a>
+  <a href="#student1">4. Student 1 forward pass</a>
+  <a href="#student2">5. Student 2 forward pass</a>
+  <a href="#student3">6. Student 3 forward pass</a>
+  <a href="#backprop-eqs">7. Backpropagation equations</a>
+  <a href="#batch-loss">8. Batch loss</a>
+  <a href="#batch-grad">9. Batched gradients</a>
+  <a href="#batch-hidden">10. Batched hidden gradients</a>
+  <a href="#weight-update">11. Weight update</a>
+  <a href="#links">12. Interactive simulator and code explanation</a>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="network">1. Network and weights</h2>
+
+<p>A simple feedforward neural network with 3 input features (exam scores), 2 hidden neurons with ReLU activation, and a single linear output predicting a student's overall grade.</p>
+
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1rem 0.5rem; margin: 1.25rem 0;">
+<svg width="100%" viewBox="0 0 680 410" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Neural network diagram</title>
+  <desc>Three input nodes e1 e2 e3 connect to two hidden neurons P1 P2 via weighted connections, which connect to a summation output node pred.</desc>
+  <style>
+    .nn-th { font-family: system-ui, sans-serif; font-size: 14px; font-weight: 500; }
+    .nn-ts { font-family: system-ui, sans-serif; font-size: 12px; }
+    @media (prefers-color-scheme: light) {
+      .nn-fill-blue { fill: #E6F1FB; stroke: #185FA5; }
+      .nn-fill-coral { fill: #FAECE7; stroke: #993C1D; }
+      .nn-fill-teal { fill: #E1F5EE; stroke: #0F6E56; }
+      .nn-fill-purple { fill: #EEEDFE; stroke: #534AB7; }
+      .nn-fill-gray { fill: #F1EFE8; stroke: #5F5E5A; }
+      .nn-t-blue { fill: #0C447C; }
+      .nn-t-coral { fill: #712B13; }
+      .nn-t-teal { fill: #085041; }
+      .nn-t-purple { fill: #26215C; }
+      .nn-t-gray { fill: #5F5E5A; }
+      .nn-t-muted { fill: #999; }
+      .nn-stroke-gray { stroke: #5F5E5A; }
+    }
+    @media (prefers-color-scheme: dark) {
+      .nn-fill-blue { fill: #0C447C; stroke: #85B7EB; }
+      .nn-fill-coral { fill: #4A1B0C; stroke: #F0997B; }
+      .nn-fill-teal { fill: #04342C; stroke: #5DCAA5; }
+      .nn-fill-purple { fill: #26215C; stroke: #AFA9EC; }
+      .nn-fill-gray { fill: #2C2C2A; stroke: #B4B2A9; }
+      .nn-t-blue { fill: #B5D4F4; }
+      .nn-t-coral { fill: #F5C4B3; }
+      .nn-t-teal { fill: #9FE1CB; }
+      .nn-t-purple { fill: #CECBF6; }
+      .nn-t-gray { fill: #B4B2A9; }
+      .nn-t-muted { fill: #5a5a5a; }
+      .nn-stroke-gray { stroke: #B4B2A9; }
+    }
+  </style>
+  <defs>
+    <marker id="nn-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <line x1="73" y1="80" x2="306" y2="135" stroke="#378ADD" stroke-width="1.5" marker-end="url(#nn-arr)"/>
+  <line x1="73" y1="80" x2="306" y2="285" stroke="#378ADD" stroke-width="1" opacity="0.7" marker-end="url(#nn-arr)"/>
+  <line x1="73" y1="210" x2="306" y2="140" stroke="#D85A30" stroke-width="1.5" marker-end="url(#nn-arr)"/>
+  <line x1="73" y1="210" x2="306" y2="280" stroke="#D85A30" stroke-width="1" opacity="0.7" marker-end="url(#nn-arr)"/>
+  <line x1="73" y1="340" x2="306" y2="145" stroke="#1D9E75" stroke-width="1" opacity="0.7" marker-end="url(#nn-arr)"/>
+  <line x1="73" y1="340" x2="306" y2="285" stroke="#1D9E75" stroke-width="1.5" marker-end="url(#nn-arr)"/>
+
+  <line x1="352" y1="130" x2="566" y2="205" class="nn-stroke-gray" stroke-width="1.5" marker-end="url(#nn-arr)"/>
+  <line x1="352" y1="290" x2="566" y2="215" class="nn-stroke-gray" stroke-width="1.5" marker-end="url(#nn-arr)"/>
+
+  <text class="nn-ts nn-wlabel" data-wfor="w11" x="148" y="88" fill="#378ADD">w&#x2081;&#x2081; = <tspan data-wl="w11">0.1</tspan></text>
+  <text class="nn-ts nn-wlabel" data-wfor="w12" x="118" y="148" fill="#378ADD">w&#x2081;&#x2082; = <tspan data-wl="w12">0.3</tspan></text>
+  <text class="nn-ts nn-wlabel" data-wfor="w21" x="175" y="172" fill="#D85A30">w&#x2082;&#x2081; = <tspan data-wl="w21">0.26</tspan></text>
+  <text class="nn-ts nn-wlabel" data-wfor="w22" x="135" y="250" fill="#D85A30">w&#x2082;&#x2082; = <tspan data-wl="w22">0.24</tspan></text>
+  <text class="nn-ts nn-wlabel" data-wfor="w31" x="118" y="280" fill="#1D9E75">w&#x2083;&#x2081; = <tspan data-wl="w31">0.33</tspan></text>
+  <text class="nn-ts nn-wlabel" data-wfor="w32" x="175" y="338" fill="#1D9E75">w&#x2083;&#x2082; = <tspan data-wl="w32">0.65</tspan></text>
+
+  <text class="nn-ts nn-t-gray nn-wlabel" data-wfor="w4" x="440" y="160">w&#x2084; = <tspan data-wl="w4">0.99</tspan></text>
+  <text class="nn-ts nn-t-gray nn-wlabel" data-wfor="w5" x="440" y="268">w&#x2085; = <tspan data-wl="w5">0.89</tspan></text>
+
+  <text class="nn-ts nn-t-gray nn-wlabel" data-wfor="b1" x="330" y="100" text-anchor="middle">b&#x2081; = <tspan data-wl="b1">&#x2212;1</tspan></text>
+  <text class="nn-ts nn-t-gray nn-wlabel" data-wfor="b2" x="330" y="330" text-anchor="middle">b&#x2082; = <tspan data-wl="b2">&#x2212;1</tspan></text>
+
+  <circle class="nn-fill-blue" cx="55" cy="80" r="18" stroke-width="0.5"/>
+  <text class="nn-th nn-t-blue" x="55" y="80" text-anchor="middle" dominant-baseline="central">e&#x2081;</text>
+
+  <circle class="nn-fill-coral" cx="55" cy="210" r="18" stroke-width="0.5"/>
+  <text class="nn-th nn-t-coral" x="55" y="210" text-anchor="middle" dominant-baseline="central">e&#x2082;</text>
+
+  <circle class="nn-fill-teal" cx="55" cy="340" r="18" stroke-width="0.5"/>
+  <text class="nn-th nn-t-teal" x="55" y="340" text-anchor="middle" dominant-baseline="central">e&#x2083;</text>
+
+  <circle class="nn-fill-purple" cx="330" cy="130" r="24" stroke-width="0.5"/>
+  <text class="nn-th nn-t-purple" x="330" y="130" text-anchor="middle" dominant-baseline="central">P&#x2081;</text>
+
+  <circle class="nn-fill-purple" cx="330" cy="290" r="24" stroke-width="0.5"/>
+  <text class="nn-th nn-t-purple" x="330" y="290" text-anchor="middle" dominant-baseline="central">P&#x2082;</text>
+
+  <circle class="nn-fill-gray" cx="590" cy="210" r="24" stroke-width="0.5"/>
+  <text class="nn-th nn-t-gray" x="590" y="210" text-anchor="middle" dominant-baseline="central">+</text>
+  <text class="nn-th nn-t-gray" x="624" y="210" dominant-baseline="central">pred</text>
+
+  <text class="nn-ts nn-t-muted" x="55" y="388" text-anchor="middle">Inputs</text>
+  <text class="nn-ts nn-t-muted" x="330" y="388" text-anchor="middle">Hidden (ReLU)</text>
+  <text class="nn-ts nn-t-muted" x="590" y="388" text-anchor="middle">Output (linear)</text>
+</svg>
+</div>
+
+<p id="weights-intro">To try other starting weights, type new values in the boxes below, or click a weight on the diagram to jump to its box. The diagram and the worked example in sections 4–11 update as you type, and the simulators in <a href="#links">section 12</a> start from your values.</p>
+
+<h4>Weights into P₁ (hidden neuron 1)</h4>
+<div class="wg">
+  <div class="wi"><label class="wi-label" for="w-w11">w₁₁ (from e₁)</label><input class="wi-in" id="w-w11" data-w="w11" type="text" value="0.1" autocomplete="off" spellcheck="false"></div>
+  <div class="wi"><label class="wi-label" for="w-w21">w₂₁ (from e₂)</label><input class="wi-in" id="w-w21" data-w="w21" type="text" value="0.26" autocomplete="off" spellcheck="false"></div>
+  <div class="wi"><label class="wi-label" for="w-w31">w₃₁ (from e₃)</label><input class="wi-in" id="w-w31" data-w="w31" type="text" value="0.33" autocomplete="off" spellcheck="false"></div>
+  <div class="wi"><label class="wi-label" for="w-b1">b₁ (bias)</label><input class="wi-in" id="w-b1" data-w="b1" type="text" value="-1" autocomplete="off" spellcheck="false"></div>
+</div>
+
+<h4>Weights into P₂ (hidden neuron 2)</h4>
+<div class="wg">
+  <div class="wi"><label class="wi-label" for="w-w12">w₁₂ (from e₁)</label><input class="wi-in" id="w-w12" data-w="w12" type="text" value="0.3" autocomplete="off" spellcheck="false"></div>
+  <div class="wi"><label class="wi-label" for="w-w22">w₂₂ (from e₂)</label><input class="wi-in" id="w-w22" data-w="w22" type="text" value="0.24" autocomplete="off" spellcheck="false"></div>
+  <div class="wi"><label class="wi-label" for="w-w32">w₃₂ (from e₃)</label><input class="wi-in" id="w-w32" data-w="w32" type="text" value="0.65" autocomplete="off" spellcheck="false"></div>
+  <div class="wi"><label class="wi-label" for="w-b2">b₂ (bias)</label><input class="wi-in" id="w-b2" data-w="b2" type="text" value="-1" autocomplete="off" spellcheck="false"></div>
+</div>
+
+<h4>Weights into output</h4>
+<div class="wg">
+  <div class="wi"><label class="wi-label" for="w-w4">w₄ (from P₁)</label><input class="wi-in" id="w-w4" data-w="w4" type="text" value="0.99" autocomplete="off" spellcheck="false"></div>
+  <div class="wi"><label class="wi-label" for="w-w5">w₅ (from P₂)</label><input class="wi-in" id="w-w5" data-w="w5" type="text" value="0.89" autocomplete="off" spellcheck="false"></div>
+</div>
+
+<div class="callout info" id="w-changed" hidden>You've changed the starting weights. The worked example in sections 4–11 and the simulators in section 12 use your values. <button type="button" class="w-restore" id="w-restore">Restore original weights</button></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="data">2. Training data</h2>
+
+<p id="data-about">Three students with exam scores and their true grades. The last row shows the real weights used to compute the grades.</p>
+<p id="data-intro">Every number in the table can be edited. Grades are recalculated from the last row as you type. You can also type a grade yourself; it then stays as typed until you clear the box. The worked example below and the simulators in <a href="#links">section 12</a> use this data.</p>
+
+<div class="table-wrap">
+<table class="data-table">
+  <tr><th>Student</th><th>Exam 1 (e₁)</th><th>Exam 2 (e₂)</th><th>Exam 3 (e₃)</th><th>Grade</th></tr>
+  <tr><td>1</td><td><input class="cell" id="d-0-0" type="text" value="56" aria-label="Student 1, exam 1" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-0-1" type="text" value="94" aria-label="Student 1, exam 2" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-0-2" type="text" value="60" aria-label="Student 1, exam 3" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-0-3" type="text" value="71.1" aria-label="Student 1, grade" autocomplete="off" spellcheck="false"></td></tr>
+  <tr><td>2</td><td><input class="cell" id="d-1-0" type="text" value="75" aria-label="Student 2, exam 1" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-1-1" type="text" value="48" aria-label="Student 2, exam 2" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-1-2" type="text" value="82" aria-label="Student 2, exam 3" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-1-3" type="text" value="68.7" aria-label="Student 2, grade" autocomplete="off" spellcheck="false"></td></tr>
+  <tr><td>3</td><td><input class="cell" id="d-2-0" type="text" value="91" aria-label="Student 3, exam 1" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-2-1" type="text" value="95" aria-label="Student 3, exam 2" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-2-2" type="text" value="98" aria-label="Student 3, exam 3" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="d-2-3" type="text" value="95.5" aria-label="Student 3, grade" autocomplete="off" spellcheck="false"></td></tr>
+  <tr><td>W</td><td><input class="cell" id="t-0" type="text" value="0.2" aria-label="Real weight for exam 1" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="t-1" type="text" value="0.35" aria-label="Real weight for exam 2" autocomplete="off" spellcheck="false"></td><td><input class="cell" id="t-2" type="text" value="0.45" aria-label="Real weight for exam 3" autocomplete="off" spellcheck="false"></td><td></td></tr>
+</table>
+</div>
+
+<div class="mb green" id="truth">Ground truth:  grade = 0.2 · e₁ + 0.35 · e₂ + 0.45 · e₃</div>
+
+<div class="callout info" id="d-changed" hidden>You've changed the training data. The worked example in sections 4–11 and the simulators in section 12 use your data. <button type="button" class="w-restore" id="d-restore">Restore original data</button></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="forward-eqs">3. Forward pass equations (symbolic)</h2>
+
+<h4>Hidden layer — pre-activation</h4>
+<div class="eq-block">z₁ = w₁₁·e₁ + w₂₁·e₂ + w₃₁·e₃ + b₁</div>
+<div class="eq-block">z₂ = w₁₂·e₁ + w₂₂·e₂ + w₃₂·e₃ + b₂</div>
+
+<h4>Hidden layer — post-activation (ReLU)</h4>
+<p class="sec-note">ReLU(z) = max(0, z)</p>
+<div class="eq-block">P₁ = max(0, z₁)</div>
+<div class="eq-block">P₂ = max(0, z₂)</div>
+
+<h4>Output layer — linear (no activation)</h4>
+<div class="eq-block">pred = w₄·P₁ + w₅·P₂</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="student1">4. Student 1 forward pass</h2>
+
+<div id="we-student1"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="student2">5. Student 2 forward pass</h2>
+
+<div id="we-student2"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="student3">6. Student 3 forward pass</h2>
+
+<div id="we-student3"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="backprop-eqs">7. Backpropagation equations (symbolic)</h2>
+
+<h4>Loss function (MSE)</h4>
+<p class="sec-note">y = true label, pred = network output</p>
+<div class="eq-block">L = ½(y − pred)²</div>
+
+<h4>Output layer gradient</h4>
+<div class="eq-block">∂L/∂pred = −(y − pred)</div>
+
+<h4>Gradients for output weights</h4>
+<div class="eq-block">∂L/∂w₄ = ∂L/∂pred · P₁ = −(y − pred) · P₁</div>
+<div class="eq-block">∂L/∂w₅ = ∂L/∂pred · P₂ = −(y − pred) · P₂</div>
+
+<h4>Gradients flowing back to hidden neurons</h4>
+<div class="eq-block">∂L/∂P₁ = ∂L/∂pred · w₄ = −(y − pred) · w₄</div>
+<div class="eq-block">∂L/∂P₂ = ∂L/∂pred · w₅ = −(y − pred) · w₅</div>
+
+<h4>Through ReLU activation</h4>
+<p class="sec-note">ReLU'(z) = 1 if z > 0, else 0</p>
+<div class="eq-block">∂L/∂z₁ = ∂L/∂P₁ · ReLU'(z₁)</div>
+<div class="eq-block">∂L/∂z₂ = ∂L/∂P₂ · ReLU'(z₂)</div>
+
+<h4>Gradients for hidden layer weights (into P₁)</h4>
+<div class="eq-block">∂L/∂w₁₁ = ∂L/∂z₁ · e₁</div>
+<div class="eq-block">∂L/∂w₂₁ = ∂L/∂z₁ · e₂</div>
+<div class="eq-block">∂L/∂w₃₁ = ∂L/∂z₁ · e₃</div>
+<div class="eq-block">∂L/∂b₁  = ∂L/∂z₁</div>
+
+<h4>Gradients for hidden layer weights (into P₂)</h4>
+<div class="eq-block">∂L/∂w₁₂ = ∂L/∂z₂ · e₁</div>
+<div class="eq-block">∂L/∂w₂₂ = ∂L/∂z₂ · e₂</div>
+<div class="eq-block">∂L/∂w₃₂ = ∂L/∂z₂ · e₃</div>
+<div class="eq-block">∂L/∂b₂  = ∂L/∂z₂</div>
+
+<h4>Weight update rule</h4>
+<p class="sec-note">η = learning rate</p>
+<div class="mb green">w ← w − η · ∂L/∂w
+b ← b − η · ∂L/∂b</div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="batch-loss">8. Batch loss (all 3 students)</h2>
+
+<div id="we-batch-loss"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="batch-grad">9. Batched output gradients</h2>
+
+<div id="we-batch-grad"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="batch-hidden">10. Batched hidden gradients</h2>
+
+<div id="we-batch-hidden"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="weight-update">11. Weight update (η = 0.0001)</h2>
+
+<div id="we-update"></div>
+
+<!-- ═════════════════════════════════════════════════════════════════════ -->
+<h2 id="links">12. Interactive simulator and code explanation</h2>
+
+<p>Two companion pages let you explore this network hands-on:</p>
+
+<div class="link-cards">
+  <a href="nn_training_simulator.html" data-sim="nn_training_simulator.html" class="link-card">
+    <div class="lc-title">Play with this model</div>
+    <div class="lc-desc">Interactive training simulator. Adjust the learning rate, step through epochs, watch the loss curve converge and weights evolve in real time. Uses your weights and training data from sections 1 and 2.</div>
+  </a>
+  <a href="explanation.html" class="link-card">
+    <div class="lc-title">Explanation of the JavaScript calculations</div>
+    <div class="lc-desc">Line-by-line walkthrough of how each JavaScript function in the simulator maps to the forward pass, backpropagation, and weight update equations above.</div>
+  </a>
+  <a href="scale_index.html" data-sim="scale_index.html" class="link-card" id="other-version">
+    <div class="lc-title">Scaled version of this example</div>
+    <div class="lc-desc">The same network, using your weights and data, with exam scores, grades and biases divided by 100. Every number is near 1, so a learning rate of 0.1 trains it in a few thousand epochs instead of getting stuck.</div>
+  </a>
+</div>
+
+<p>The simulator also comes in two versions that stop training sooner: <a href="nn_sim_low.html" data-sim="nn_sim_low.html">low precision</a> (stops once the loss is below 1e-6) and <a href="nn_sim_mid.html" data-sim="nn_sim_mid.html">medium precision</a> (below 1e-7). The main simulator trains until the loss is below 1e-10. All three use the weights in <a href="#network">section 1</a> and the training data in <a href="#data">section 2</a>.</p>
+
+<div class="footer">
+  Simple neural network worked example. All equations derived from the hand-drawn network diagram with ReLU activation and MSE loss. Training data uses the weighted grade formula: grade = 0.2·e₁ + 0.35·e₂ + 0.45·e₃.
+</div>
+
+</div>
+<script>
+// Shared by index.html and scale_index.html (PAGE says which).
+//  - index.html: the weights (section 1) and training data (section 2) are edited here, in
+//    original units, and saved in this browser. Every change updates the diagram, the worked
+//    example (sections 4-11) and the links to the simulators and the scaled page, which carry
+//    the values in their query string: ?w11=0.2&...&s1=56,94,60,71.1&...&tw=0.2,0.35,0.45
+//  - scale_index.html: the values come from that link (or what index.html saved), and the exam
+//    scores, grades and biases are divided by PAGE.scale before anything is shown or computed.
+var PAGE = {scale: 1, eta: 0.0001, editable: true};
+(function () {
+  var SCALE = PAGE.scale;
+  var EXTRA = Math.round(Math.log10(SCALE)); // extra decimals per power of "grade" units when scaled
+  var NUMBER = /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/;
+  var PARTIAL = /^[-+]?\.?$/; // "", "-", "." ...: still being typed, not yet an error
+  var SUB = ['₁', '₂', '₃', '₄', '₅'];
+  var MINUS = '−';
+
+  // ── Number helpers ──
+  function clean(text) { return text.trim().replace(/−/g, '-'); } // accept "−1" as well as "-1"
+  function parse(text) {
+    var t = clean(text);
+    var v = NUMBER.test(t) ? Number(t) : NaN;
+    return isFinite(v) ? v : NaN;
+  }
+  function typo(s) { return s.replace(/-/g, MINUS); }                   // typographic minus sign
+  function pretty(v) { return typo(String(Number(v.toPrecision(6)))); } // at most 6 significant digits
+  // Worked-example formats: d decimals at the original scale, plus EXTRA more for every power
+  // of "grade" the quantity carries (a loss is grade squared, so it gets 2 x EXTRA more)
+  function fixed(v, d, power) { return typo(v.toFixed(d + EXTRA * power)); }
+  function trim(v, d, power) { return typo(String(Number(v.toFixed(d + EXTRA * power)))); }
+  function signed(s) { return s.charAt(0) === MINUS ? s : '+' + s; }
+  function paren(s) { return s.charAt(0) === MINUS ? '(' + s + ')' : s; }
+  function sum(parts) { // ["5.6", "24.44", "−1"] -> "5.6 + 24.44 − 1"
+    return parts.map(function (p, i) {
+      if (i === 0) return p;
+      return p.charAt(0) === MINUS ? ' ' + MINUS + ' ' + p.slice(1) : ' + ' + p;
+    }).join('');
+  }
+  function isNumberList(x, n) {
+    return Array.isArray(x) && x.length === n &&
+      x.every(function (v) { return typeof v === 'number' && isFinite(v); });
+  }
+  function numberList(text, n) { // "56,94,60,71.1" -> [56, 94, 60, 71.1], or null
+    if (text === null) return null;
+    var v = text.split(',').map(function (t) { return t.trim() === '' ? NaN : Number(t); });
+    return isNumberList(v, n) ? v : null;
+  }
+  function load(key) {
+    try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; }
+  }
+  function save(key, value) {
+    try {
+      if (value) localStorage.setItem(key, JSON.stringify(value));
+      else localStorage.removeItem(key);
+    } catch (e) { /* storage unavailable: the links still carry the values */ }
+  }
+  function setBox(box, v) { box.value = String(v); box.removeAttribute('aria-invalid'); }
+
+  // Make a text box edit a number. onValue(v) runs for every valid number typed;
+  // anything else is flagged red. On leaving the box, an empty box calls onEmpty
+  // (if given), and any other non-number is replaced by current().
+  function numberBox(box, current, onValue, onEmpty) {
+    box.value = String(current());
+    box.addEventListener('input', function () {
+      var v = parse(box.value);
+      if (isFinite(v)) {
+        box.removeAttribute('aria-invalid');
+        onValue(v);
+      } else {
+        box.setAttribute('aria-invalid', PARTIAL.test(clean(box.value)) ? 'false' : 'true');
+      }
+    });
+    box.addEventListener('change', function () {
+      if (isFinite(parse(box.value))) return;
+      if (onEmpty && clean(box.value) === '') onEmpty();
+      else setBox(box, current());
+    });
+  }
+
+  // ── The values, in original units ──
+  var W_DEFAULT = {w11: 0.1, w21: 0.26, w31: 0.33, b1: -1, w12: 0.3, w22: 0.24, w32: 0.65, b2: -1, w4: 0.99, w5: 0.89};
+  var WEIGHT_NAMES = Object.keys(W_DEFAULT);
+  var D_DEFAULT = {rows: [[56, 94, 60, 71.1], [75, 48, 82, 68.7], [91, 95, 98, 95.5]], truth: [0.2, 0.35, 0.45]};
+  var W_KEY = 'nn-start-weights', D_KEY = 'nn-training-data';
+  var weights = Object.assign({}, W_DEFAULT);
+  var rows, truth, byHand; // rows[i] = [e1, e2, e3, grade]; truth = the W row; byHand[i]: grade typed in
+  function originalData() {
+    rows = D_DEFAULT.rows.map(function (r) { return r.slice(); });
+    truth = D_DEFAULT.truth.slice();
+    byHand = [false, false, false];
+  }
+  originalData();
+
+  var savedWeights = load(W_KEY), savedData = load(D_KEY);
+  if (!PAGE.editable) {
+    // Values passed in the link take priority over saved ones, as in the simulators
+    var params = new URLSearchParams(location.search), linkW = false, linkD = false;
+    WEIGHT_NAMES.forEach(function (k) {
+      var s = params.get(k);
+      if (s !== null && s.trim() !== '' && isFinite(Number(s))) { weights[k] = Number(s); linkW = true; }
+    });
+    [0, 1, 2].forEach(function (i) {
+      var r = numberList(params.get('s' + (i + 1)), 4);
+      if (r) { rows[i] = r; linkD = true; }
+    });
+    var tw = numberList(params.get('tw'), 3);
+    if (tw) { truth = tw; linkD = true; }
+    if (linkW) savedWeights = null;
+    if (linkD) savedData = null;
+  }
+  if (savedWeights) WEIGHT_NAMES.forEach(function (k) {
+    if (typeof savedWeights[k] === 'number' && isFinite(savedWeights[k])) weights[k] = savedWeights[k];
+  });
+  if (savedData && Array.isArray(savedData.rows) && savedData.rows.length === 3 &&
+      savedData.rows.every(function (r) { return isNumberList(r, 4); }) && isNumberList(savedData.truth, 3)) {
+    rows = savedData.rows;
+    truth = savedData.truth;
+    byHand = rows.map(function (r, i) { return !!(savedData.byHand && savedData.byHand[i]); });
+  }
+
+  // The values this page shows and computes with. On the scaled page the exam scores, grades
+  // and biases are divided by SCALE; the input, output and real (W row) weights stay the same,
+  // so every z, P and prediction is the original divided by SCALE.
+  function scaled(v) { return SCALE === 1 ? v : Number((v / SCALE).toPrecision(12)); } // 71.1/100 = 0.711
+  function pageValues() {
+    var w = Object.assign({}, weights);
+    w.b1 = scaled(w.b1);
+    w.b2 = scaled(w.b2);
+    return {w: w, rows: rows.map(function (r) { return r.map(scaled); }), truth: truth.slice()};
+  }
+
+  // ── Editing (index.html only) ──
+  function weightsChanged() {
+    return WEIGHT_NAMES.some(function (k) { return weights[k] !== W_DEFAULT[k]; });
+  }
+  function formula(i) {
+    var r = rows[i];
+    return Math.round((truth[0] * r[0] + truth[1] * r[1] + truth[2] * r[2]) * 1e6) / 1e6;
+  }
+  // The grade shown for a student whose grade isn't typed in by hand. A row back at its original
+  // exam scores and W row gets its original grade back: the original grades are rounded to one
+  // decimal place (student 3's 95.55 is listed as 95.5), so the formula alone wouldn't restore them.
+  function calculatedGrade(i) {
+    var original = D_DEFAULT.rows[i];
+    var asOriginal = [0, 1, 2].every(function (j) {
+      return rows[i][j] === original[j] && truth[j] === D_DEFAULT.truth[j];
+    });
+    return asOriginal ? original[3] : formula(i);
+  }
+  function recalculate() {
+    rows.forEach(function (r, i) { if (!byHand[i]) r[3] = calculatedGrade(i); });
+  }
+  function dataChanged() {
+    return JSON.stringify([rows, truth]) !== JSON.stringify([D_DEFAULT.rows, D_DEFAULT.truth]);
+  }
+
+  var weightBoxes = {};
+  WEIGHT_NAMES.forEach(function (k) { weightBoxes[k] = document.getElementById('w-' + k); });
+  var dataBoxes = [0, 1, 2].map(function (i) {
+    return [0, 1, 2, 3].map(function (j) { return document.getElementById('d-' + i + '-' + j); });
+  });
+  var truthBoxes = [0, 1, 2].map(function (j) { return document.getElementById('t-' + j); });
+
+  if (PAGE.editable) {
+    WEIGHT_NAMES.forEach(function (k) {
+      numberBox(weightBoxes[k], function () { return weights[k]; }, function (v) { weights[k] = v; render(); });
+    });
+    // Clicking a weight on the diagram jumps to its box
+    document.querySelectorAll('[data-wfor]').forEach(function (label) {
+      label.addEventListener('click', function () {
+        var box = weightBoxes[label.getAttribute('data-wfor')];
+        box.focus();
+        box.select();
+      });
+    });
+    document.getElementById('w-restore').addEventListener('click', function () {
+      weights = Object.assign({}, W_DEFAULT);
+      WEIGHT_NAMES.forEach(function (k) { setBox(weightBoxes[k], weights[k]); });
+      render();
+    });
+
+    [0, 1, 2].forEach(function (i) {
+      [0, 1, 2].forEach(function (j) {
+        numberBox(dataBoxes[i][j], function () { return rows[i][j]; }, function (v) {
+          rows[i][j] = v;
+          recalculate();
+          render();
+        });
+      });
+      var gradeBox = dataBoxes[i][3];
+      numberBox(gradeBox, function () { return rows[i][3]; }, function (v) {
+        rows[i][3] = v;
+        byHand[i] = true;
+        render();
+      }, function () {
+        byHand[i] = false;
+        recalculate();
+        setBox(gradeBox, rows[i][3]);
+        render();
+      });
+    });
+    truthBoxes.forEach(function (box, j) {
+      numberBox(box, function () { return truth[j]; }, function (v) {
+        truth[j] = v;
+        recalculate();
+        render();
+      });
+    });
+    document.getElementById('d-restore').addEventListener('click', function () {
+      originalData();
+      rows.forEach(function (r, i) { r.forEach(function (v, j) { setBox(dataBoxes[i][j], v); }); });
+      truthBoxes.forEach(function (box, j) { setBox(box, truth[j]); });
+      render();
+    });
+  } else {
+    document.body.classList.add('readonly');
+    WEIGHT_NAMES.map(function (k) { return weightBoxes[k]; })
+      .concat(dataBoxes[0], dataBoxes[1], dataBoxes[2], truthBoxes)
+      .forEach(function (box) { box.readOnly = true; });
+  }
+
+  // ── Links ──
+  // index.html: only what differs from the originals, in original units
+  function linkQuery() {
+    var parts = [];
+    if (weightsChanged()) WEIGHT_NAMES.forEach(function (k) { parts.push(k + '=' + encodeURIComponent(weights[k])); });
+    if (dataChanged()) {
+      rows.forEach(function (r, i) { parts.push('s' + (i + 1) + '=' + r.map(encodeURIComponent).join(',')); });
+      parts.push('tw=' + truth.map(encodeURIComponent).join(','));
+    }
+    return parts.length ? '?' + parts.join('&') : '';
+  }
+  // scale_index.html: every value as used on this page, plus the learning rate and the scale
+  function simulatorQuery(pv) {
+    var parts = WEIGHT_NAMES.map(function (k) { return k + '=' + encodeURIComponent(pv.w[k]); });
+    pv.rows.forEach(function (r, i) { parts.push('s' + (i + 1) + '=' + r.map(encodeURIComponent).join(',')); });
+    parts.push('tw=' + pv.truth.map(encodeURIComponent).join(','), 'lr=' + PAGE.eta, 'scale=' + SCALE);
+    return '?' + parts.join('&');
+  }
+
+  // "grade = 0.2 · e₁ + 0.35 · e₂ + 0.45 · e₃", naming any student whose grade doesn't follow it.
+  // Within 0.05 (in original units) counts as following it, because the original grades are
+  // rounded to one decimal place (student 3's 95.55 is listed as 95.5).
+  function groundTruth(pv) {
+    var t = pv.truth;
+    var text = 'grade = ' + t.map(function (c, j) {
+      var sign = j === 0 ? (c < 0 ? MINUS : '') : (c < 0 ? ' ' + MINUS + ' ' : ' + ');
+      return sign + pretty(Math.abs(c)) + ' · e' + SUB[j];
+    }).join('');
+    var off = [];
+    pv.rows.forEach(function (r, i) {
+      if (Math.abs(r[3] - (t[0] * r[0] + t[1] * r[1] + t[2] * r[2])) > (0.05 + 1e-9) / SCALE) off.push(i + 1);
+    });
+    if (off.length === 3) return 'none (every grade was typed in by hand)';
+    if (off.length) text += ' (except student' + (off.length > 1 ? 's ' : ' ') + off.join(' and ') + ', typed in by hand)';
+    return text;
+  }
+
+  // ── Worked example (sections 4-11), computed exactly as the simulators' batchStep() does ──
+  function forward(w, r) {
+    var z1 = w.w11 * r[0] + w.w21 * r[1] + w.w31 * r[2] + w.b1;
+    var z2 = w.w12 * r[0] + w.w22 * r[1] + w.w32 * r[2] + w.b2;
+    var p1 = Math.max(0, z1), p2 = Math.max(0, z2);
+    return {z1: z1, z2: z2, p1: p1, p2: p2, pred: w.w4 * p1 + w.w5 * p2};
+  }
+  function eq(text) { return '<div class="eq-block">' + text + '</div>'; }
+  function h4(text) { return '<h4>' + text + '</h4>'; }
+  function mb(cls, text) { return '<div class="mb ' + cls + '">' + text + '</div>'; }
+  function P(n) { return 'P' + SUB[n - 1]; }
+  function studentList(list) { return 'student' + (list.length > 1 ? 's ' : ' ') + list.join(' and '); }
+
+  function predictionNote(pv, f) {
+    var over = f.every(function (fi, i) { return fi.pred > pv.rows[i][3]; });
+    var under = f.every(function (fi, i) { return fi.pred < pv.rows[i][3]; });
+    if (!over && !under) return 'Some predictions are too high and some too low.';
+    var text = 'All predictions ' + (over ? 'overshoot' : 'undershoot') + '.';
+    if (pv.rows.every(function (r) { return r[3] > 0; })) {
+      var ratios = f.map(function (fi, i) { return fi.pred / pv.rows[i][3]; });
+      var lo = Math.min.apply(null, ratios).toFixed(1), hi = Math.max.apply(null, ratios).toFixed(1);
+      text += ' The network\'s starting weights produce values ' +
+        (lo === hi ? 'about ' + lo : 'roughly ' + lo + '–' + hi) + '× the true grade.';
+    }
+    return text;
+  }
+
+  // What the first update does to the hidden neurons
+  function afterStepNote(pv, f, g, nw) {
+    var after = pv.rows.map(function (r) { return forward(nw, r); });
+    var offBefore = [1, 2].map(function (n) { return f.every(function (fi) { return fi['z' + n] <= 0; }); });
+    var offAfter = [1, 2].map(function (n) {
+      return after.map(function (a, i) { return a['z' + n] > 0 ? 0 : i + 1; }).filter(Boolean);
+    });
+    var deadFromStart = [1, 2].filter(function (n) { return offBefore[n - 1]; });
+    var killed = [1, 2].filter(function (n) { return !offBefore[n - 1] && offAfter[n - 1].length === 3; });
+    var partial = [1, 2].filter(function (n) { return offAfter[n - 1].length && offAfter[n - 1].length < 3; });
+    var text = '';
+    if (deadFromStart.length) {
+      text += 'Even before training, z is negative for every student in ' + deadFromStart.map(P).join(' and ') +
+        ', so ' + (deadFromStart.length > 1 ? 'both output' : 'it outputs') + ' 0 and gets no gradient: it can never learn. ';
+    }
+    if (killed.length) {
+      var biggest = 0;
+      WEIGHT_NAMES.forEach(function (k) { if (k.charAt(0) === 'w') biggest = Math.max(biggest, Math.abs(PAGE.eta * g[k])); });
+      text += (killed.length > 1 || deadFromStart.length
+        ? 'After this one step, both hidden neurons output 0 for every student. Every gradient into them is multiplied by ReLU′(z) = 0, so no weight can ever change again and the network predicts 0 for every student. '
+        : 'After this one step, z' + SUB[killed[0] - 1] + ' is negative for every student, so ' + P(killed[0]) +
+          ' outputs 0 from now on. Every gradient into it is multiplied by ReLU′(z' + SUB[killed[0] - 1] + ') = 0, so its weights can never change again: ' +
+          P(killed[0]) + ' is a dead neuron. ') +
+        'The step was too big: one weight moved by ' + typo(biggest.toPrecision(2)) + ' in a single update.';
+      text += SCALE === 1
+        ? ' With exam scores near 100 the gradients run into the thousands, so even η = ' + pretty(PAGE.eta) +
+          ' overshoots. The <a href="scale_index.html" data-sim="scale_index.html">scaled version</a> of this example divides the scores by 100 so that a normal learning rate works.'
+        : ' Try a smaller learning rate in the simulator.';
+    }
+    if (partial.length) {
+      text += (text ? ' ' : 'After this step, ') + partial.map(function (n) {
+        var on = [1, 2, 3].filter(function (s) { return offAfter[n - 1].indexOf(s) < 0; });
+        return P(n) + ' is off for ' + studentList(offAfter[n - 1]) + ' (z ≤ 0) but still on for ' +
+          studentList(on) + ', so it still gets gradient and can switch back on.';
+      }).join(' ');
+    }
+    if (!text) text = 'After this step every neuron is still on for every student, so all the weights keep learning.';
+    if (!killed.length && !deadFromStart.length) text += ' This is just the first epoch: use the simulators below to keep training.';
+    return '<div class="callout ' + (killed.length || deadFromStart.length ? 'warn' : 'info') + '">' + text + '</div>';
+  }
+
+  function renderWorked(pv) {
+    var w = pv.w, eta = PAGE.eta;
+    var f = pv.rows.map(function (r) { return forward(w, r); });
+    var g = {w11: 0, w21: 0, w31: 0, b1: 0, w12: 0, w22: 0, w32: 0, b2: 0, w4: 0, w5: 0};
+    var err = [], loss = [], dz1 = [], dz2 = [];
+    pv.rows.forEach(function (r, i) {
+      var e = f[i].pred - r[3];
+      err.push(e);
+      loss.push(0.5 * e * e);
+      g.w4 += e * f[i].p1;
+      g.w5 += e * f[i].p2;
+      var d1 = e * w.w4 * (f[i].z1 > 0 ? 1 : 0), d2 = e * w.w5 * (f[i].z2 > 0 ? 1 : 0);
+      dz1.push(d1);
+      dz2.push(d2);
+      g.w11 += d1 * r[0]; g.w21 += d1 * r[1]; g.w31 += d1 * r[2]; g.b1 += d1;
+      g.w12 += d2 * r[0]; g.w22 += d2 * r[1]; g.w32 += d2 * r[2]; g.b2 += d2;
+    });
+    for (var k in g) g[k] /= 3;
+    var nw = {};
+    for (var k2 in w) nw[k2] = w[k2] - eta * g[k2];
+
+    // Sections 4-6: one forward pass per student
+    pv.rows.forEach(function (r, i) {
+      var e = r.slice(0, 3).map(pretty), y = pretty(r[3]), fi = f[i];
+      var html = '<span class="tag">e₁ = ' + e[0] + ', e₂ = ' + e[1] + ', e₃ = ' + e[2] + ', y = ' + y + '</span>';
+      html += h4('Hidden layer pre-activation');
+      [1, 2].forEach(function (n) {
+        var ws = [w['w1' + n], w['w2' + n], w['w3' + n]], b = w['b' + n];
+        var terms = ws.map(function (wv, j) { return paren(pretty(wv)) + '(' + e[j] + ')'; });
+        var products = ws.map(function (wv, j) { return trim(wv * r[j], 4, 1); });
+        html += eq('z' + SUB[n - 1] + ' = ' + terms.join(' + ') + ' + ' + paren(pretty(b)) + ' = ' +
+                   sum(products.concat(trim(b, 4, 1))) + ' = ' + trim(fi['z' + n], 4, 1));
+      });
+      html += h4('Hidden layer post-activation (ReLU)');
+      [1, 2].forEach(function (n) {
+        html += eq(P(n) + ' = max(0, ' + trim(fi['z' + n], 4, 1) + ') = ' + trim(fi['p' + n], 4, 1));
+      });
+      html += h4('Output');
+      html += eq('pred = ' + paren(pretty(w.w4)) + '(' + trim(fi.p1, 4, 1) + ') + ' + paren(pretty(w.w5)) + '(' +
+                 trim(fi.p2, 4, 1) + ') = ' + sum([trim(w.w4 * fi.p1, 4, 1), trim(w.w5 * fi.p2, 4, 1)]) +
+                 ' = ' + fixed(fi.pred, 3, 1));
+      html += h4('Loss');
+      html += mb('bad', 'L = 0.5 × (' + y + ' − ' + paren(fixed(fi.pred, 3, 1)) + ')² = 0.5 × (' +
+                 fixed(r[3] - fi.pred, 3, 1) + ')² = ' + fixed(loss[i], 2, 2));
+      document.getElementById('we-student' + (i + 1)).innerHTML = html;
+    });
+
+    // Section 8: batch loss
+    var total = loss[0] + loss[1] + loss[2];
+    var html = h4('Individual losses');
+    pv.rows.forEach(function (r, i) {
+      html += eq('L' + SUB[i] + ' = 0.5(' + pretty(r[3]) + ' − ' + paren(fixed(f[i].pred, 3, 1)) + ')² = ' +
+                 fixed(loss[i], 2, 2) + '  (Student ' + (i + 1) + ')');
+    });
+    html += h4('Batch loss (mean)');
+    html += eq('L_batch = (1/3)(L₁ + L₂ + L₃)');
+    html += eq('        = (1/3)(' + sum(loss.map(function (l) { return fixed(l, 2, 2); })) + ')');
+    html += eq('        = (1/3)(' + fixed(total, 2, 2) + ')');
+    html += mb('bad', 'L_batch = ' + fixed(total / 3, 2, 2));
+    html += h4('Predictions vs actual');
+    pv.rows.forEach(function (r, i) {
+      html += eq('Student ' + (i + 1) + ':  pred = ' + fixed(f[i].pred, 3, 1) + '   y = ' + pretty(r[3]) +
+                 '   error = ' + signed(fixed(err[i], 2, 1)));
+    });
+    html += '<div class="callout warn">' + predictionNote(pv, f) + '</div>';
+    document.getElementById('we-batch-loss').innerHTML = html;
+
+    // Section 9: output gradients
+    html = h4('∂L/∂pred per student');
+    pv.rows.forEach(function (r, i) {
+      html += eq('∂L' + SUB[i] + '/∂pred = −(' + pretty(r[3]) + ' − ' + paren(fixed(f[i].pred, 3, 1)) +
+                 ')  = ' + fixed(err[i], 3, 1));
+    });
+    html += h4('Averaged output weight gradients');
+    [['w4', 'p1', 3], ['w5', 'p2', 4]].forEach(function (o) {
+      var parts = f.map(function (fi, i) { return paren(fixed(err[i], 3, 1)) + '·' + trim(fi[o[1]], 4, 1); });
+      var products = f.map(function (fi, i) { return fixed(err[i] * fi[o[1]], 2, 2); });
+      html += eq('∂L/∂w' + SUB[o[2]] + ' = (1/3)(' + parts.join(' + ') + ')');
+      html += eq('       = (1/3)(' + sum(products) + ') = ' + fixed(g[o[0]], 2, 2));
+    });
+    document.getElementById('we-batch-grad').innerHTML = html;
+
+    // Section 10: hidden gradients
+    var allOpen = f.every(function (fi) { return fi.z1 > 0 && fi.z2 > 0; });
+    html = h4(allOpen ? 'Through ReLU (all gates open)' : 'Through ReLU (a closed gate, where z ≤ 0, passes no gradient)');
+    [[1, 'w4', dz1], [2, 'w5', dz2]].forEach(function (o) {
+      var items = f.map(function (fi, i) {
+        var a = paren(fixed(err[i], 3, 1)) + '·' + paren(pretty(w[o[1]]));
+        return fi['z' + o[0]] > 0 ? a + ' = ' + fixed(o[2][i], 3, 1) : a + '·0 = 0';
+      });
+      html += eq('∂L/∂z' + SUB[o[0] - 1] + ' per student: ' + items.join(',  '));
+    });
+    [[1, dz1], [2, dz2]].forEach(function (o) {
+      var n = o[0], dz = o[1];
+      html += h4('Averaged gradients into ' + P(n));
+      [0, 1, 2].forEach(function (j) {
+        var parts = pv.rows.map(function (r, i) { return paren(fixed(dz[i], 3, 1)) + '·' + paren(pretty(r[j])); });
+        var products = pv.rows.map(function (r, i) { return fixed(dz[i] * r[j], 1, 2); });
+        html += eq('∂L/∂w' + SUB[j] + SUB[n - 1] + ' = (1/3)(' + parts.join(' + ') + ') = (1/3)(' +
+                   sum(products) + ') = ' + fixed(g['w' + (j + 1) + n], 2, 2));
+      });
+      html += eq('∂L/∂b' + SUB[n - 1] + '  = (1/3)(' + sum(dz.map(function (d) { return fixed(d, 3, 1); })) +
+                 ') = ' + fixed(g['b' + n], 3, 1));
+    });
+    document.getElementById('we-batch-hidden').innerHTML = html;
+
+    // Section 11: the update
+    var etaText = pretty(eta);
+    document.getElementById('weight-update').textContent = '11. Weight update (η = ' + etaText + ')';
+    function update(key, label, gd, gp, nd, np) {
+      return eq(label + ' = ' + pretty(w[key]) + ' − ' + etaText + ' × ' + paren(fixed(g[key], gd, gp)) +
+                ' = ' + fixed(nw[key], nd, np));
+    }
+    html = mb('green', 'w_new = w_old − η · ∂L/∂w');
+    html += h4('Output weights') + update('w4', 'w₄', 2, 2, 4, 0) + update('w5', 'w₅', 2, 2, 4, 0);
+    [1, 2].forEach(function (n) {
+      html += h4('Hidden weights (' + P(n) + ')');
+      [0, 1, 2].forEach(function (j) { html += update('w' + (j + 1) + n, 'w' + SUB[j] + SUB[n - 1], 2, 2, 4, 0); });
+      html += update('b' + n, 'b' + SUB[n - 1] + ' ', 3, 1, 4, 1);
+    });
+    html += afterStepNote(pv, f, g, nw);
+    document.getElementById('we-update').innerHTML = html;
+  }
+
+  // ── Draw everything ──
+  function render() {
+    var pv = pageValues();
+
+    WEIGHT_NAMES.forEach(function (k) {
+      document.querySelectorAll('[data-wl="' + k + '"]').forEach(function (el) { el.textContent = pretty(pv.w[k]); });
+      if (PAGE.editable) weightBoxes[k].closest('.wi').classList.toggle('changed', weights[k] !== W_DEFAULT[k]);
+      else weightBoxes[k].value = pretty(pv.w[k]);
+    });
+
+    pv.rows.forEach(function (r, i) {
+      if (PAGE.editable) {
+        var gradeBox = dataBoxes[i][3];
+        if (document.activeElement !== gradeBox) setBox(gradeBox, rows[i][3]); // don't disturb typing
+        gradeBox.classList.toggle('calc', !byHand[i]);
+        gradeBox.title = byHand[i] ? 'Typed in by hand. Clear the box to calculate it from the W row.'
+                                   : 'Calculated from the W row. Type a number to replace it.';
+        rows[i].forEach(function (v, j) { dataBoxes[i][j].classList.toggle('changed', v !== D_DEFAULT.rows[i][j]); });
+      } else {
+        r.forEach(function (v, j) { dataBoxes[i][j].value = pretty(v); });
+      }
+    });
+    truthBoxes.forEach(function (box, j) {
+      if (PAGE.editable) box.classList.toggle('changed', truth[j] !== D_DEFAULT.truth[j]);
+      else box.value = pretty(truth[j]);
+    });
+    document.getElementById('truth').textContent = 'Ground truth:  ' + groundTruth(pv);
+
+    renderWorked(pv);
+
+    if (PAGE.editable) {
+      document.getElementById('w-changed').hidden = !weightsChanged();
+      document.getElementById('d-changed').hidden = !dataChanged();
+      save(W_KEY, weightsChanged() ? weights : null);
+      save(D_KEY, dataChanged() ? {rows: rows, truth: truth, byHand: byHand} : null);
+    }
+    var query = PAGE.editable ? linkQuery() : simulatorQuery(pv);
+    document.querySelectorAll('[data-sim]').forEach(function (a) { a.href = a.getAttribute('data-sim') + query; });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

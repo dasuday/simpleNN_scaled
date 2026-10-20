@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NN Simulator — Code Explanation</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --surface2: #f3f2ee;
+    --border: rgba(0,0,0,0.1);
+    --text: #1a1a1a;
+    --text2: #6b6b6b;
+    --text3: #999;
+    --accent: #185FA5;
+    --accent-bg: #E6F1FB;
+    --good: #0F6E56;
+    --good-bg: #E1F5EE;
+    --coral: #D85A30;
+    --coral-bg: #FAECE7;
+    --purple: #534AB7;
+    --purple-bg: #EEEDFE;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111113;
+      --surface: #1c1c1f;
+      --surface2: #252528;
+      --border: rgba(255,255,255,0.08);
+      --text: #e4e4e4;
+      --text2: #8a8a8a;
+      --text3: #5a5a5a;
+      --accent: #85B7EB;
+      --accent-bg: #0C447C;
+      --good: #5DCAA5;
+      --good-bg: #085041;
+      --coral: #F0997B;
+      --coral-bg: #4A1B0C;
+      --purple: #AFA9EC;
+      --purple-bg: #26215C;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.7; padding: 2.5rem 1rem; }
+  .container { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+  .subtitle { font-size: 0.9rem; color: var(--text2); margin-bottom: 2rem; }
+  h2 { font-size: 1.15rem; font-weight: 600; margin: 2.5rem 0 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 0.95rem; font-weight: 600; margin: 1.5rem 0 0.4rem; color: var(--text2); }
+  p { font-size: 0.9rem; color: var(--text2); margin-bottom: 0.75rem; }
+  p strong { color: var(--text); font-weight: 500; }
+  p a { color: var(--accent); }
+
+  .code-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1rem 0 1.25rem;
+  }
+  .code-header {
+    background: var(--surface2);
+    padding: 6px 14px;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; } .dot-y { background: #ffbd2e; } .dot-g { background: #28c840; }
+  pre {
+    padding: 1rem 1.25rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.85;
+    color: var(--text);
+  }
+  pre .cm { color: var(--text3); font-style: italic; }
+  pre .kw { color: var(--accent); }
+  pre .fn { color: var(--coral); }
+  pre .st { color: var(--good); }
+  pre .hl { background: var(--accent-bg); padding: 1px 4px; border-radius: 3px; }
+
+  .math-box {
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 2;
+    margin: 0.75rem 0;
+  }
+  .math-box.blue { background: var(--accent-bg); color: var(--accent); }
+  .math-box.green { background: var(--good-bg); color: var(--good); }
+  .math-box.coral { background: var(--coral-bg); color: var(--coral); }
+  .math-box.purple { background: var(--purple-bg); color: var(--purple); }
+
+  .mapping {
+    display: grid;
+    grid-template-columns: 1fr 30px 1fr;
+    gap: 0;
+    align-items: center;
+    margin: 1rem 0;
+  }
+  .map-side {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.9;
+  }
+  .map-arrow { text-align: center; color: var(--text3); font-size: 1.2rem; }
+  .map-label { font-size: 0.7rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; font-family: var(--sans); font-weight: 600; }
+
+  .callout {
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    margin: 1rem 0;
+  }
+  .callout.info { background: var(--accent-bg); color: var(--accent); border-left: 3px solid var(--accent); border-radius: 0; }
+  .callout.warn { background: var(--coral-bg); color: var(--coral); border-left: 3px solid var(--coral); border-radius: 0; }
+
+  .nav-link {
+    display: inline-block;
+    margin-top: 2rem;
+    font-size: 0.85rem;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .nav-link:hover { text-decoration: underline; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .toc-title { font-size: 0.8rem; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+  .toc a { display: block; font-size: 0.85rem; color: var(--accent); text-decoration: none; padding: 3px 0; }
+  .toc a:hover { text-decoration: underline; }
+  .math-box { white-space: pre-wrap; } /* keep each equation on its own line */
+  .callout a { color: inherit; font-weight: 600; }
+  .nav-link + .nav-link { margin-left: 1.5rem; }
+
+  .footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.72rem; color: var(--text3); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>NN training simulator — code explanation</h1>
+<p class="subtitle">How each JavaScript function maps to the neural network math</p>
+
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <a href="#network">1. Network architecture and initial weights</a>
+  <a href="#forward">2. Forward pass — <code>forward()</code></a>
+  <a href="#relu">3. ReLU and its derivative</a>
+  <a href="#backprop">4. Batched backpropagation — <code>batchStep()</code></a>
+  <a href="#training">5. Training loop and convergence</a>
+  <a href="#data">6. Training data</a>
+  <a href="#scaling">7. Why training gets stuck, and the scaled version</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="network">1. Network architecture and initial weights</h2>
+
+<p>The network has <strong>3 inputs</strong> (e₁, e₂, e₃), <strong>2 hidden neurons</strong> (P₁, P₂) with ReLU activation, and <strong>1 linear output</strong> (pred). The initial weights come from the hand-drawn diagram:</p>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Initial weights</div>
+<pre><span class="cm">// Default values of all 10 trainable parameters, from the diagram</span>
+<span class="kw">var</span> W_DEFAULT = {
+  w11: 0.1,   w21: 0.26,  w31: 0.33,  b1: -1,   <span class="cm">// → into P₁</span>
+  w12: 0.3,   w22: 0.24,  w32: 0.65,  b2: -1,   <span class="cm">// → into P₂</span>
+  w4:  0.99,  w5:  0.89                           <span class="cm">// → into output</span>
+};
+
+<span class="cm">// The weights training actually uses: your values if you set any (see below)</span>
+<span class="kw">var</span> W = <span class="fn">loadStartWeights</span>();</pre>
+</div>
+
+<p>You can change the starting weights on the <a href="index.html#network">worked example page</a>. Its simulator links carry your values in the link's query string (for example <code>nn_training_simulator.html?w11=0.2&amp;w21=0.26&amp;…</code>), and <code>loadStartWeights()</code> reads them. That page also saves your values in the browser, so a simulator opened directly, without one of those links, starts from them too. If neither is present, the simulator uses the defaults. <strong>Reset</strong> returns to whichever starting weights were loaded. The <a href="scale_index.html">scaled worked example</a> sends its own, scaled values the same way (see <a href="#scaling">section 7</a>).</p>
+
+<p>The <strong>ground truth</strong> these weights need to learn is a simple weighted average:</p>
+
+<div class="math-box green">grade = 0.2 * e₁ + 0.35 * e₂ + 0.45 * e₃</div>
+
+<p>The network is overparameterized for this task — 10 weights to learn a function that only needs 3. It will converge to <em>some</em> weight combination that produces the correct outputs, but the internal weights won't match 0.2/0.35/0.45 directly because the hidden layer creates infinitely many equivalent mappings.</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="forward">2. Forward pass — <code>forward()</code></h2>
+
+<p>This function takes one student's exam scores and the current weights, and computes the prediction. It runs the three equations from the network diagram in order:</p>
+
+<div class="math-box blue">z₁ = w₁₁·e₁ + w₂₁·e₂ + w₃₁·e₃ + b₁
+z₂ = w₁₂·e₁ + w₂₂·e₂ + w₃₂·e₃ + b₂
+P₁ = max(0, z₁)     P₂ = max(0, z₂)
+pred = w₄·P₁ + w₅·P₂</div>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>forward()</div>
+<pre><span class="kw">function</span> <span class="fn">forward</span>(s, w) {
+  <span class="cm">// Hidden layer: weighted sum of inputs + bias</span>
+  <span class="kw">var</span> z1 = <span class="hl">w.w11 * s.e1 + w.w21 * s.e2 + w.w31 * s.e3 + w.b1</span>;
+  <span class="kw">var</span> z2 = <span class="hl">w.w12 * s.e1 + w.w22 * s.e2 + w.w32 * s.e3 + w.b2</span>;
+
+  <span class="cm">// ReLU activation</span>
+  <span class="kw">var</span> p1 = <span class="fn">relu</span>(z1);
+  <span class="kw">var</span> p2 = <span class="fn">relu</span>(z2);
+
+  <span class="cm">// Linear output (no activation)</span>
+  <span class="kw">var</span> pred = <span class="hl">w.w4 * p1 + w.w5 * p2</span>;
+
+  <span class="kw">return</span> { z1, z2, p1, p2, pred };
+}</pre>
+</div>
+
+<div class="mapping">
+  <div class="map-side">
+    <div class="map-label">Math</div>
+    z₁ = w₁₁·e₁ + w₂₁·e₂ + w₃₁·e₃ + b₁<br>
+    P₁ = max(0, z₁)<br>
+    pred = w₄·P₁ + w₅·P₂
+  </div>
+  <div class="map-arrow">=</div>
+  <div class="map-side">
+    <div class="map-label">Code</div>
+    z1 = w.w11*s.e1 + w.w21*s.e2 ...<br>
+    p1 = relu(z1)<br>
+    pred = w.w4*p1 + w.w5*p2
+  </div>
+</div>
+
+<p>The function returns all intermediate values (z₁, z₂, P₁, P₂) because <strong>backpropagation needs them</strong> — the gradients depend on whether ReLU was active (z &gt; 0) and what P₁/P₂ were.</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="relu">3. ReLU and its derivative</h2>
+
+<p>The simplest functions in the entire codebase:</p>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>ReLU</div>
+<pre><span class="kw">function</span> <span class="fn">relu</span>(x)  { <span class="kw">return</span> Math.max(0, x); }   <span class="cm">// pass positive, kill negative</span>
+<span class="kw">function</span> <span class="fn">reluD</span>(x) { <span class="kw">return</span> x > 0 ? 1 : 0; }    <span class="cm">// gradient: 1 if active, 0 if dead</span></pre>
+</div>
+
+<div class="math-box coral">ReLU(z)  = max(0, z)
+ReLU'(z) = 1 if z &gt; 0, else 0</div>
+
+<p>The derivative is the key to understanding how gradients flow backward. When z &gt; 0, the gradient passes through unchanged (multiplied by 1). When z ≤ 0, the gradient is killed entirely (multiplied by 0) — this is the <strong>"dying ReLU"</strong> effect.</p>
+
+<div class="callout warn">With the starting weights, every z is positive for all three students, so on the first forward pass every gate is open. It doesn't stay that way at the default learning rate of 0.0001: the first update makes all three weights into P₁ negative, so z₁ is negative for every student from then on and P₁ never learns again. <a href="#scaling">Section 7</a> shows the numbers.</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="backprop">4. Batched backpropagation — <code>batchStep()</code></h2>
+
+<p>This is where the learning happens. One call to this function runs one full epoch: forward pass all 3 students, compute gradients, average them, update weights. It follows the chain rule backward through the network.</p>
+
+<h3>Step 1 — Compute loss and output gradient</h3>
+
+<div class="math-box blue">L = ½(y − pred)²
+∂L/∂pred = −(y − pred) = (pred − y)</div>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Loss and output error</div>
+<pre><span class="kw">var</span> err = f.pred - s.y;           <span class="cm">// (pred − y) = ∂L/∂pred</span>
+totalLoss += 0.5 * err * err;     <span class="cm">// ½(pred − y)² = L</span></pre>
+</div>
+
+<h3>Step 2 — Gradients for output weights (w₄, w₅)</h3>
+
+<div class="math-box blue">∂L/∂w₄ = ∂L/∂pred · P₁ = (pred − y) · P₁
+∂L/∂w₅ = ∂L/∂pred · P₂ = (pred − y) · P₂</div>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Output weight gradients</div>
+<pre>grads.w4 += <span class="hl">err * f.p1</span>;    <span class="cm">// ∂L/∂w₄ = (pred−y) · P₁</span>
+grads.w5 += <span class="hl">err * f.p2</span>;    <span class="cm">// ∂L/∂w₅ = (pred−y) · P₂</span></pre>
+</div>
+
+<h3>Step 3 — Chain rule through ReLU to hidden layer</h3>
+
+<p>The gradient flows backward from the output through w₄/w₅, then through the ReLU gate:</p>
+
+<div class="math-box purple">∂L/∂z₁ = ∂L/∂pred · w₄ · ReLU'(z₁) = (pred − y) · w₄ · ReLU'(z₁)
+∂L/∂z₂ = ∂L/∂pred · w₅ · ReLU'(z₂) = (pred − y) · w₅ · ReLU'(z₂)</div>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Through ReLU</div>
+<pre><span class="kw">var</span> dLdz1 = <span class="hl">err * W.w4 * reluD(f.z1)</span>;  <span class="cm">// chain: output → w₄ → ReLU gate</span>
+<span class="kw">var</span> dLdz2 = <span class="hl">err * W.w5 * reluD(f.z2)</span>;  <span class="cm">// chain: output → w₅ → ReLU gate</span></pre>
+</div>
+
+<div class="callout warn">If <code>reluD(z)</code> returns 0, the entire gradient for that neuron's weights becomes zero — nothing gets updated. This is why "dead neurons" are a problem in deep ReLU networks.</div>
+
+<h3>Step 4 — Gradients for hidden weights</h3>
+
+<p>Once we have ∂L/∂z₁ and ∂L/∂z₂, the gradient for each hidden weight is simply that value multiplied by the corresponding input:</p>
+
+<div class="math-box purple">∂L/∂w₁₁ = ∂L/∂z₁ · e₁      ∂L/∂w₁₂ = ∂L/∂z₂ · e₁
+∂L/∂w₂₁ = ∂L/∂z₁ · e₂      ∂L/∂w₂₂ = ∂L/∂z₂ · e₂
+∂L/∂w₃₁ = ∂L/∂z₁ · e₃      ∂L/∂w₃₂ = ∂L/∂z₂ · e₃
+∂L/∂b₁  = ∂L/∂z₁            ∂L/∂b₂  = ∂L/∂z₂</div>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Hidden weight gradients</div>
+<pre><span class="cm">// Gradients into P₁</span>
+grads.w11 += <span class="hl">dLdz1 * s.e1</span>;   <span class="cm">// ∂L/∂w₁₁ = ∂L/∂z₁ · e₁</span>
+grads.w21 += <span class="hl">dLdz1 * s.e2</span>;   <span class="cm">// ∂L/∂w₂₁ = ∂L/∂z₁ · e₂</span>
+grads.w31 += <span class="hl">dLdz1 * s.e3</span>;   <span class="cm">// ∂L/∂w₃₁ = ∂L/∂z₁ · e₃</span>
+grads.b1  += <span class="hl">dLdz1</span>;          <span class="cm">// ∂L/∂b₁  = ∂L/∂z₁ · 1</span>
+
+<span class="cm">// Gradients into P₂ (same pattern)</span>
+grads.w12 += <span class="hl">dLdz2 * s.e1</span>;   <span class="cm">// ∂L/∂w₁₂ = ∂L/∂z₂ · e₁</span>
+grads.w22 += <span class="hl">dLdz2 * s.e2</span>;
+grads.w32 += <span class="hl">dLdz2 * s.e3</span>;
+grads.b2  += <span class="hl">dLdz2</span>;</pre>
+</div>
+
+<p>Note the <code>+=</code> — gradients are <strong>accumulated</strong> across all 3 students in the batch, then averaged in step 5.</p>
+
+<h3>Step 5 — Average and update</h3>
+
+<div class="math-box green">gradient_avg = (1/3) · Σ gradients
+w_new = w_old − η · gradient_avg</div>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Batch average + weight update</div>
+<pre><span class="cm">// Average gradients over batch (3 students)</span>
+<span class="kw">for</span> (<span class="kw">var</span> k <span class="kw">in</span> grads) grads[k] /= n;
+
+<span class="cm">// Gradient descent: w = w - lr * gradient</span>
+<span class="kw">for</span> (<span class="kw">var</span> k <span class="kw">in</span> grads) W[k] -= <span class="hl">lr * grads[k]</span>;</pre>
+</div>
+
+<p>The <code>lr</code> (learning rate) controls the step size. Too small and convergence takes millions of epochs. Too large and the weights overshoot: the loss can blow up to NaN, but in this network a too-large step more often switches a ReLU neuron off for good, or makes the loss bounce back and forth forever. Both happen at the default of 0.0001 (see <a href="#scaling">section 7</a>). The simulator lets you change the learning rate in real time.</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="training">5. Training loop and convergence</h2>
+
+<p>The training loop calls <code>batchStep()</code> repeatedly. Each call is one <strong>epoch</strong> — one full pass over all 3 students. The loop stops when any of these conditions is met:</p>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Stop conditions</div>
+<pre><span class="kw">if</span> (loss &lt; CONVERGED)  <span class="cm">// Converged: 1e-10 here, 1e-6 and 1e-7 in the low and medium versions</span>
+<span class="kw">if</span> (epoch >= maxEpochs) <span class="cm">// Hit the cap (user-configurable)</span>
+<span class="kw">if</span> (!isFinite(loss))   <span class="cm">// Diverged — loss exploded to NaN/Infinity</span></pre>
+</div>
+
+<p>On the scaled version, <code>CONVERGED</code> is divided by 100², so it means the same accuracy as on the original (see <a href="#scaling">section 7</a>). The auto-pause fires every 100,000 epochs so you can inspect the weights, adjust the learning rate, or stop early. Training runs asynchronously in batches of 500 steps with <code>setTimeout(tick, 0)</code> between batches so the browser stays responsive and the chart updates live.</p>
+
+<div class="callout info">The +100k and +1M buttons also run asynchronously in batches of 2,000 per tick, updating the UI between batches. This prevents the browser from freezing on long runs.</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="data">6. Training data</h2>
+
+<p>The three students from the original table, with grades computed from the ground truth formula:</p>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Training data</div>
+<pre><span class="kw">var</span> DATA_DEFAULT = [
+  { e1: 56, e2: 94, e3: 60, y: 71.1 },  <span class="cm">// 0.2(56) + 0.35(94) + 0.45(60) = 71.1</span>
+  { e1: 75, e2: 48, e3: 82, y: 68.7 },  <span class="cm">// 0.2(75) + 0.35(48) + 0.45(82) = 68.7</span>
+  { e1: 91, e2: 95, e3: 98, y: 95.5 },  <span class="cm">// 0.2(91) + 0.35(95) + 0.45(98) = 95.55, listed as 95.5</span>
+];
+
+<span class="cm">// The data training actually uses: yours if you set any (see below)</span>
+<span class="kw">var</span> training = <span class="fn">loadTrainingData</span>();
+<span class="kw">var</span> data = training.data;</pre>
+</div>
+
+<p>You can edit this table on the <a href="index.html#data">worked example page</a>. Like the weights, your data travels in the simulator links and is saved in your browser, and <code>loadTrainingData()</code> reads it: <code>s1</code>, <code>s2</code> and <code>s3</code> hold each student's three exam scores and grade, and <code>tw</code> holds the real weights.</p>
+
+<p>With only 3 data points and 10 parameters, the system is heavily <strong>underdetermined</strong> — there are infinitely many weight combinations that produce zero loss. The network will find one, but it won't be the "true" weights. This is a core concept in deep learning: the loss surface has many global minima, and gradient descent lands on whichever one is closest to the starting point.</p>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 id="scaling">7. Why training gets stuck, and the scaled version</h2>
+
+<p>At the default learning rate of 0.0001, the first update is far too big. Every prediction starts 46–69 points too high and the exam scores are 48–98, so the hidden-weight gradients run into the thousands (∂L/∂w₁₁ = 4,264.65). Multiplied by 0.0001, that moves w₁₁ by 0.43, from 0.1 to −0.33, and the other weights move by similar amounts. A step bigger than the weights themselves flips them negative instead of nudging them.</p>
+
+<div class="math-box coral">After step 1 (students 1, 2, 3):
+z₁ = −44.6, −45.1, −61.2
+z₂ =  −6.6,  +4.35, −0.8</div>
+
+<p>z₁ is negative for every student, so P₁ outputs 0 and <code>reluD(z1)</code> returns 0 for every student. No gradient reaches w₁₁, w₂₁, w₃₁ or b₁ again, and w₄'s gradient (err × P₁) is 0 too: <strong>P₁ is dead</strong>. P₂ survives only because student 2's z₂ is +4.35. It switches back on for everyone within a couple of epochs, but the steps are still too big, so from then on the loss alternates between 164.38 and 289.87 every epoch and never settles.</p>
+
+<p>That margin is very thin. Change w₁₁ from 0.1 to 0.2 and every starting prediction is further off, so the first step is bigger, and student 2's z₂ ends up at −6.3. Now both neurons are dead, the network predicts 0 for every student, and the loss stays at 3,149.19, the average of ½·grade². That's higher than the starting loss of 2,091.5, so it looks like divergence, but nothing is changing at all.</p>
+
+<h3>Why a smaller learning rate alone isn't enough</h3>
+
+<p>A smaller learning rate keeps the neurons alive (3.2e-5 worked for every starting point we tried), but training gets very slow: at 5e-5, the loss takes about 1.7 million epochs to get below 1e-6. The underlying problem is the units. A weight multiplies an exam score near 100, but a bias multiplies 1, so changing a weight by 0.01 moves z by about 1 while changing a bias by 0.01 moves it by 0.01. A learning rate small enough to keep the weight steps safe leaves the biases crawling.</p>
+
+<h3>The scaled version</h3>
+
+<p>The <a href="scale_index.html">scaled worked example</a> divides the exam scores, the grades and the two biases by 100, and leaves the other weights and the real weights unchanged. That's the same network, just in different units:</p>
+
+<div class="math-box green">e′ = e / 100     y′ = y / 100     b′ = b / 100
+z′ = z / 100     P′ = P / 100     pred′ = pred / 100     L′ = L / 10,000</div>
+
+<p>Now the weights and the biases both multiply numbers near 1, so they learn at similar speeds, and a standard learning rate of 0.1 works. The first step moves each weight by 0.03 to 0.05, no neuron switches off, and training converges in 5,181 epochs in the main simulator (3,200 and 3,695 in the low and medium versions). Scaling doesn't make every learning rate safe, though: at 1, the first step switches both neurons off, just as 0.0001 does in the original.</p>
+
+<p>The scaled page's simulator links add <code>lr=0.1</code> and <code>scale=100</code> to the scaled values. The simulator starts its learning-rate slider at <code>lr</code>, and because every loss is 100² times smaller, it shrinks its convergence threshold by the same factor. The colours for a good or bad loss and error, and the number of decimals shown, are scaled the same way.</p>
+
+<div class="code-block">
+  <div class="code-header"><span class="dot dot-r"></span><span class="dot dot-y"></span><span class="dot dot-g"></span>Settings from the link</div>
+<pre><span class="kw">var</span> linkParams = <span class="kw">new</span> <span class="fn">URLSearchParams</span>(location.search);
+<span class="kw">var</span> SCALE = Number(linkParams.get(<span class="st">'scale'</span>)) > 0 ? Number(linkParams.get(<span class="st">'scale'</span>)) : 1;
+<span class="kw">var</span> CONVERGED = <span class="hl">1e-10 / (SCALE * SCALE)</span>;   <span class="cm">// same accuracy as the unscaled version</span>
+<span class="cm">// lr=0.1 in the link moves the learning-rate slider to 1.0e-1</span></pre>
+</div>
+
+<a href="nn_training_simulator.html" class="nav-link">Open the simulator →</a>
+<a href="scale_index.html" class="nav-link">Open the scaled worked example →</a>
+
+<div class="footer">
+  Code explanation for the neural network training simulator.
+  All functions map directly to the forward propagation, backpropagation, and weight update equations derived from the hand-drawn network diagram.
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Network Training Simulator</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --surface: #ffffff;
+    --surface2: #f3f2ee;
+    --border: rgba(0,0,0,0.1);
+    --border-strong: rgba(0,0,0,0.2);
+    --text: #1a1a1a;
+    --text2: #6b6b6b;
+    --text3: #999;
+    --accent: #185FA5;
+    --accent-bg: #E6F1FB;
+    --good: #0F6E56;
+    --good-bg: #E1F5EE;
+    --bad: #A32D2D;
+    --bad-bg: #FCEBEB;
+    --warn: #854F0B;
+    --warn-bg: #FAEEDA;
+    --mono: 'JetBrains Mono', 'Consolas', monospace;
+    --sans: 'DM Sans', system-ui, sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111113;
+      --surface: #1c1c1f;
+      --surface2: #252528;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.15);
+      --text: #e4e4e4;
+      --text2: #8a8a8a;
+      --text3: #5a5a5a;
+      --accent: #85B7EB;
+      --accent-bg: #0C447C;
+      --good: #5DCAA5;
+      --good-bg: #085041;
+      --bad: #F09595;
+      --bad-bg: #501313;
+      --warn: #FAC775;
+      --warn-bg: #412402;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.5; padding: 2rem 1rem; min-height: 100vh; }
+  .container { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 0.25rem; }
+  .subtitle { font-size: 0.85rem; color: var(--text2); margin-bottom: 1.5rem; }
+  .start-note { font-size: 0.8rem; color: var(--accent); background: var(--accent-bg); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 1.5rem; }
+  .start-note a { color: inherit; font-weight: 600; }
+  .net-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-family: var(--mono); font-size: 0.75rem; color: var(--text2); line-height: 2; overflow-x: auto; white-space: pre; }
+  .net-card .hl { color: var(--accent); font-weight: 500; }
+  .ctrl-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+  .ctrl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .ctrl-row:last-child { margin-bottom: 0; }
+  .ctrl-row label { font-size: 0.8rem; color: var(--text2); min-width: 90px; font-weight: 500; }
+  .ctrl-row .lr-val { font-size: 0.8rem; font-weight: 500; font-family: var(--mono); min-width: 60px; color: var(--text); }
+  input[type="range"] { -webkit-appearance: none; appearance: none; height: 4px; background: var(--border-strong); border-radius: 2px; outline: none; flex: 1; max-width: 220px; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+  input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; }
+  input[type="number"] { font-family: var(--mono); font-size: 0.8rem; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); width: 120px; text-align: center; }
+  input[type="number"]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .btn { font-family: var(--sans); font-size: 0.76rem; font-weight: 500; padding: 6px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; transition: background 0.1s, transform 0.05s; white-space: nowrap; }
+  .btn:hover { background: var(--surface2); }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { opacity: 0.9; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 1rem 0; }
+  .m { background: var(--surface2); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .m-label { font-size: 0.68rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .m-val { font-size: 1.25rem; font-weight: 600; font-family: var(--mono); }
+  .m-val.good { color: var(--good); }
+  .m-val.bad { color: var(--bad); }
+  .pause-note { font-size: 0.8rem; color: var(--warn); background: var(--warn-bg); border-radius: var(--radius-sm); padding: 8px 12px; margin: 0.5rem 0; display: none; font-weight: 500; }
+  .chart-wrap { position: relative; width: 100%; height: 240px; margin: 1rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .sec-label { font-size: 0.78rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; margin: 1.25rem 0 0.4rem; }
+  .pred-row { font-family: var(--mono); font-size: 0.75rem; color: var(--text); line-height: 2; padding: 0 4px; }
+  .pred-row .err { color: var(--bad); font-weight: 500; }
+  .pred-row .ok { color: var(--good); font-weight: 500; }
+  .wt { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; margin: 0.5rem 0; }
+  .wt-item { font-family: var(--mono); font-size: 0.72rem; color: var(--text); background: var(--surface2); border-radius: var(--radius-sm); padding: 6px 10px; }
+  .wt-item .wl { color: var(--text3); font-size: 0.65rem; display: block; margin-bottom: 1px; }
+  .truth { background: var(--good-bg); color: var(--good); font-family: var(--mono); font-size: 0.75rem; padding: 8px 12px; border-radius: var(--radius-sm); margin-top: 0.5rem; font-weight: 500; }
+  .footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.72rem; color: var(--text3); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Neural network training simulator</h1>
+  <p class="subtitle">3 inputs, 2 hidden (ReLU), 1 linear output — batched gradient descent on 3 students</p>
+
+  <p class="start-note" id="start-note" hidden></p>
+
+  <div class="net-card">Forward pass:
+  z1 = w11*e1 + w21*e2 + w31*e3 + b1       P1 = <span class="hl">max(0, z1)</span>
+  z2 = w12*e1 + w22*e2 + w32*e3 + b2       P2 = <span class="hl">max(0, z2)</span>
+  pred = w4*P1 + w5*P2                      L = <span class="hl">0.5*(y - pred)^2</span>
+
+Ground truth:  <span id="truth-code">grade = 0.2*e1 + 0.35*e2 + 0.45*e3</span></div>
+
+  <div class="ctrl-section">
+    <div class="ctrl-row">
+      <label>Learning rate</label>
+      <input type="range" id="lr" min="-8" max="0" step="0.1" value="-4" oninput="updateLR()">
+      <span class="lr-val" id="lr-val">1.0e-4</span>
+    </div>
+    <div class="ctrl-row">
+      <label>Max epochs</label>
+      <input type="number" id="max-epochs" value="1000000" min="1" step="1" onchange="updateMaxEpochs()">
+    </div>
+    <div class="ctrl-row">
+      <button class="btn primary" onclick="runTraining()" id="run-btn">Train</button>
+      <button class="btn" onclick="pauseTraining()" id="pause-btn" disabled>Pause</button>
+      <button class="btn primary" onclick="resumeTraining()" id="resume-btn" style="display:none;">Resume</button>
+      <button class="btn" onclick="stepOnce()">+1</button>
+      <button class="btn" onclick="stepN(100)">+100</button>
+      <button class="btn" onclick="stepN(1000)">+1k</button>
+      <button class="btn" onclick="stepN(10000)">+10k</button>
+      <button class="btn" onclick="stepN(100000)">+100k</button>
+      <button class="btn" onclick="stepN(1000000)">+1M</button>
+      <button class="btn" onclick="resetWeights()">Reset</button>
+    </div>
+  </div>
+
+  <div class="pause-note" id="pause-note"></div>
+
+  <div class="metrics">
+    <div class="m"><div class="m-label">Epoch</div><div class="m-val" id="m-epoch">0</div></div>
+    <div class="m"><div class="m-label">Batch loss</div><div class="m-val bad" id="m-loss">1,637.20</div></div>
+    <div class="m"><div class="m-label">Max error</div><div class="m-val bad" id="m-maxerr">69.38</div></div>
+    <div class="m"><div class="m-label">Status</div><div class="m-val" id="m-status">Ready</div></div>
+  </div>
+
+  <div class="chart-wrap">
+    <canvas id="lossChart" role="img" aria-label="Loss over training epochs showing convergence">Loss curve</canvas>
+  </div>
+
+  <div class="sec-label">Predictions vs actual</div>
+  <div id="preds"></div>
+
+  <div class="sec-label">Current weights</div>
+  <div class="wt" id="weights"></div>
+
+  <div class="sec-label">Ground truth</div>
+  <div class="truth" id="truth">grade = 0.2 * e1 + 0.35 * e2 + 0.45 * e3</div>
+
+  <div class="footer">
+    Batched gradient descent with MSE loss. Auto-pauses every 100k epochs.
+    Convergence threshold: loss &lt; 1e-10.
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// Default starting weights, from the network diagram
+var W_DEFAULT = {w11:0.1, w21:0.26, w31:0.33, b1:-1, w12:0.3, w22:0.24, w32:0.65, b2:-1, w4:0.99, w5:0.89};
+
+// Starting weights: values passed in the link from the worked example page
+// (e.g. ?w11=0.2&b1=-0.5), else values that page saved in this browser,
+// else the defaults. Reset returns to these.
+function loadStartWeights() {
+  var w = Object.assign({}, W_DEFAULT);
+  var params = new URLSearchParams(location.search);
+  var fromLink = false;
+  for (var k in w) {
+    var s = params.get(k);
+    if (s === null || s.trim() === '') continue;
+    var v = Number(s);
+    if (isFinite(v)) { w[k] = v; fromLink = true; }
+  }
+  if (!fromLink) {
+    try {
+      var saved = JSON.parse(localStorage.getItem('nn-start-weights') || 'null');
+      if (saved) for (var k2 in w) {
+        if (typeof saved[k2] === 'number' && isFinite(saved[k2])) w[k2] = saved[k2];
+      }
+    } catch (e) { /* storage unavailable: use the defaults */ }
+  }
+  return w;
+}
+
+var W = loadStartWeights();
+var W0 = Object.assign({}, W);
+var lr = 0.0001;
+var epoch = 0;
+var maxEpochs = 1000000;
+var autoPauseEvery = 100000;
+// Default training data, and the real weights used to make its grades
+var DATA_DEFAULT = [
+  {e1:56, e2:94, e3:60, y:71.1},
+  {e1:75, e2:48, e3:82, y:68.7},
+  {e1:91, e2:95, e3:98, y:95.5}
+];
+var TRUTH_DEFAULT = [0.2, 0.35, 0.45];
+
+// Training data: values passed in the link from the worked example page
+// (s1=e1,e2,e3,grade for student 1, s2=..., s3=..., tw=the real weights),
+// else values that page saved in this browser, else the defaults.
+function numberList(x, n) {
+  if (typeof x === 'string') x = x.split(',').map(function (t) { return t.trim() === '' ? NaN : Number(t); });
+  if (!Array.isArray(x) || x.length !== n) return null;
+  for (var i = 0; i < n; i++) if (typeof x[i] !== 'number' || !isFinite(x[i])) return null;
+  return x;
+}
+
+function loadTrainingData() {
+  var rows = DATA_DEFAULT.map(function (s) { return [s.e1, s.e2, s.e3, s.y]; });
+  var truth = TRUTH_DEFAULT.slice();
+  var params = new URLSearchParams(location.search);
+  var fromLink = false;
+  for (var i = 0; i < rows.length; i++) {
+    var row = numberList(params.get('s' + (i + 1)), 4);
+    if (row) { rows[i] = row; fromLink = true; }
+  }
+  var tw = numberList(params.get('tw'), 3);
+  if (tw) { truth = tw; fromLink = true; }
+  if (!fromLink) {
+    try {
+      var saved = JSON.parse(localStorage.getItem('nn-training-data') || 'null');
+      if (saved && Array.isArray(saved.rows) && saved.rows.length === rows.length &&
+          saved.rows.every(function (r) { return numberList(r, 4); }) && numberList(saved.truth, 3)) {
+        rows = saved.rows;
+        truth = saved.truth;
+      }
+    } catch (e) { /* storage unavailable: use the defaults */ }
+  }
+  return {
+    data: rows.map(function (r) { return {e1:r[0], e2:r[1], e3:r[2], y:r[3]}; }),
+    truth: truth
+  };
+}
+
+var training = loadTrainingData();
+var data = training.data;
+var truth = training.truth;
+
+// Settings from the link: the starting learning rate (lr), and the scale the worked
+// example's values were divided by (scale=100 on the scaled page). Losses shrink by
+// scale squared, so the convergence threshold and the colour thresholds do too.
+var linkParams = new URLSearchParams(location.search);
+var SCALE = Number(linkParams.get('scale')) > 0 ? Number(linkParams.get('scale')) : 1;
+var CONVERGED = 1e-10 / (SCALE * SCALE);
+var DIGITS = 4 + Math.max(0, Math.round(Math.log10(SCALE))); // decimals for predictions and errors
+(function () {
+  var v = Number(linkParams.get('lr'));
+  if (linkParams.get('lr') === null || !(v > 0) || !isFinite(v)) return;
+  var slider = document.getElementById('lr');
+  slider.value = Math.max(Number(slider.min), Math.min(Number(slider.max), Math.round(Math.log10(v) * 10) / 10));
+  updateLR();
+})();
+
+// "grade = 0.2*e1 + 0.35*e2 + 0.45*e3", naming any student whose grade doesn't
+// follow it. Within 0.05 counts as following it, because the original grades
+// are rounded to one decimal place (student 3's 95.55 is listed as 95.5).
+function groundTruth(times) {
+  var text = 'grade = ';
+  for (var i = 0; i < 3; i++) {
+    var c = truth[i];
+    text += (i === 0 ? (c < 0 ? '-' : '') : (c < 0 ? ' - ' : ' + ')) + Math.abs(c) + times + 'e' + (i + 1);
+  }
+  var off = [];
+  data.forEach(function (s, n) {
+    if (Math.abs(truth[0]*s.e1 + truth[1]*s.e2 + truth[2]*s.e3 - s.y) > (0.05 + 1e-9) / SCALE) off.push(n + 1);
+  });
+  if (off.length === data.length) return 'none (every grade was typed in by hand)';
+  if (off.length) text += ' (except student' + (off.length > 1 ? 's ' : ' ') + off.join(' and ') + ', typed in by hand)';
+  return text;
+}
+document.getElementById('truth-code').textContent = groundTruth('*');
+document.getElementById('truth').textContent = groundTruth(' * ');
+
+// Say where the starting weights and data came from, if not the originals
+(function () {
+  var weightsChanged = Object.keys(W_DEFAULT).some(function (k) { return W[k] !== W_DEFAULT[k]; });
+  var dataChanged = JSON.stringify([data, truth]) !== JSON.stringify([DATA_DEFAULT, TRUTH_DEFAULT]);
+  var page = '<a href="index.html' + (weightsChanged ? '#network' : '#data') + '">worked example page</a>';
+  var note = document.getElementById('start-note');
+  if (SCALE !== 1) {
+    note.innerHTML = 'Scaled version, from the <a href="scale_index.html">scaled worked example</a>: exam scores, grades and ' +
+      'biases are divided by ' + SCALE + ', so every loss is ' + (SCALE * SCALE).toLocaleString() +
+      ' times smaller, and the convergence threshold is scaled to match.';
+    note.hidden = false;
+    return;
+  }
+  if (weightsChanged && dataChanged)
+    note.innerHTML = 'Training uses the starting weights and training data you set on the ' + page + ', not the originals. Change them there.';
+  else if (weightsChanged)
+    note.innerHTML = 'Training starts from the weights you set on the ' + page + ', not the original weights. Change them there.';
+  else if (dataChanged)
+    note.innerHTML = 'Training uses the data you set on the ' + page + ', not the original data. Change it there.';
+  note.hidden = !(weightsChanged || dataChanged);
+})();
+var lossHist = [];
+var chart;
+var running = false;
+var paused = false;
+var lastPauseCheckpoint = 0;
+
+function updateLR() {
+  lr = Math.pow(10, parseFloat(document.getElementById('lr').value));
+  document.getElementById('lr-val').textContent = lr.toExponential(1);
+}
+
+function updateMaxEpochs() {
+  var v = parseInt(document.getElementById('max-epochs').value);
+  if (v && v > 0) maxEpochs = v;
+  else document.getElementById('max-epochs').value = maxEpochs;
+}
+
+function relu(x) { return Math.max(0, x); }
+function reluD(x) { return x > 0 ? 1 : 0; }
+
+function forward(s, w) {
+  var z1 = w.w11*s.e1 + w.w21*s.e2 + w.w31*s.e3 + w.b1;
+  var z2 = w.w12*s.e1 + w.w22*s.e2 + w.w32*s.e3 + w.b2;
+  var p1 = relu(z1), p2 = relu(z2);
+  var pred = w.w4*p1 + w.w5*p2;
+  return {z1:z1, z2:z2, p1:p1, p2:p2, pred:pred};
+}
+
+function batchStep() {
+  var grads = {w11:0,w21:0,w31:0,b1:0,w12:0,w22:0,w32:0,b2:0,w4:0,w5:0};
+  var totalLoss = 0;
+  var n = data.length;
+  for (var i = 0; i < n; i++) {
+    var s = data[i];
+    var f = forward(s, W);
+    var err = f.pred - s.y;
+    totalLoss += 0.5 * err * err;
+    var dLdpred = err;
+    grads.w4 += dLdpred * f.p1;
+    grads.w5 += dLdpred * f.p2;
+    var dLdz1 = dLdpred * W.w4 * reluD(f.z1);
+    var dLdz2 = dLdpred * W.w5 * reluD(f.z2);
+    grads.w11 += dLdz1*s.e1; grads.w21 += dLdz1*s.e2; grads.w31 += dLdz1*s.e3; grads.b1 += dLdz1;
+    grads.w12 += dLdz2*s.e1; grads.w22 += dLdz2*s.e2; grads.w32 += dLdz2*s.e3; grads.b2 += dLdz2;
+  }
+  for (var k in grads) grads[k] /= n;
+  for (var k in grads) {
+    if (!isFinite(grads[k])) return totalLoss / n;
+    W[k] -= lr * grads[k];
+  }
+  epoch++;
+  return totalLoss / n;
+}
+
+function formatLoss(v) {
+  if (!isFinite(v)) return 'NaN';
+  if (v >= 1) return v.toFixed(2);
+  if (v >= 0.001) return v.toFixed(4);
+  return v.toExponential(2);
+}
+
+function fmtEpoch(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
+  return n.toLocaleString();
+}
+
+function updateUI(loss) {
+  document.getElementById('m-epoch').textContent = fmtEpoch(epoch);
+  var lossEl = document.getElementById('m-loss');
+  lossEl.textContent = formatLoss(loss);
+  lossEl.className = 'm-val ' + (loss < 1 / (SCALE * SCALE) ? 'good' : 'bad');
+  var maxErr = 0;
+  var predHtml = '';
+  for (var i = 0; i < data.length; i++) {
+    var s = data[i];
+    var f = forward(s, W);
+    var e = Math.abs(f.pred - s.y);
+    if (e > maxErr) maxErr = e;
+    var cls = e < 0.5 / SCALE ? 'ok' : 'err';
+    predHtml += '<div class="pred-row">Student ' + (i+1) + ':  pred = ' + f.pred.toFixed(DIGITS) + '   y = ' + s.y + '   error = <span class="' + cls + '">' + (f.pred - s.y >= 0 ? '+' : '') + (f.pred - s.y).toFixed(DIGITS) + '</span></div>';
+  }
+  document.getElementById('preds').innerHTML = predHtml;
+  var meEl = document.getElementById('m-maxerr');
+  meEl.textContent = maxErr < 0.001 / SCALE ? maxErr.toExponential(2) : maxErr.toFixed(DIGITS);
+  meEl.className = 'm-val ' + (maxErr < 0.5 / SCALE ? 'good' : 'bad');
+  var whtml = '';
+  var names = ['w11','w21','w31','b1','w12','w22','w32','b2','w4','w5'];
+  for (var i = 0; i < names.length; i++) {
+    whtml += '<div class="wt-item"><span class="wl">' + names[i] + '</span>' + W[names[i]].toFixed(6) + '</div>';
+  }
+  document.getElementById('weights').innerHTML = whtml;
+}
+
+function initChart() {
+  var isDark = matchMedia('(prefers-color-scheme: dark)').matches;
+  chart = new Chart(document.getElementById('lossChart'), {
+    type: 'line',
+    data: { labels: [], datasets: [{
+      label: 'Batch loss', data: [],
+      borderColor: isDark ? '#85B7EB' : '#185FA5',
+      backgroundColor: 'transparent',
+      borderWidth: 1.5, pointRadius: 0, tension: 0.3
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      scales: {
+        x: {
+          display: true,
+          title: { display: true, text: 'Epoch', color: isDark ? '#8a8a8a' : '#6b6b6b', font: { size: 11 } },
+          ticks: { color: isDark ? '#8a8a8a' : '#6b6b6b', font: { size: 10 }, maxTicksLimit: 8,
+            callback: function(v) { if (v >= 1000000) return (v/1000000).toFixed(v%1000000===0?0:1)+'M'; if (v >= 1000) return Math.round(v/1000)+'k'; return v; }
+          },
+          grid: { display: false }
+        },
+        y: {
+          display: true,
+          title: { display: true, text: 'Loss (log)', color: isDark ? '#8a8a8a' : '#6b6b6b', font: { size: 11 } },
+          ticks: { color: isDark ? '#8a8a8a' : '#6b6b6b', font: { size: 10 }, maxTicksLimit: 5 },
+          grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+          type: 'logarithmic'
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function updateChart() {
+  var step = Math.max(1, Math.floor(lossHist.length / 600));
+  var labels = [], vals = [];
+  for (var i = 0; i < lossHist.length; i += step) { labels.push(i); vals.push(lossHist[i]); }
+  if (lossHist.length > 0 && labels[labels.length-1] !== lossHist.length-1) { labels.push(lossHist.length-1); vals.push(lossHist[lossHist.length-1]); }
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = vals;
+  chart.update();
+}
+
+function setButtons(state) {
+  var run = document.getElementById('run-btn');
+  var pause = document.getElementById('pause-btn');
+  var resume = document.getElementById('resume-btn');
+  if (state === 'running') { run.style.display = 'none'; pause.style.display = ''; pause.disabled = false; resume.style.display = 'none'; }
+  else if (state === 'paused') { run.style.display = 'none'; pause.style.display = 'none'; resume.style.display = ''; }
+  else { run.style.display = ''; run.disabled = false; pause.style.display = ''; pause.disabled = true; resume.style.display = 'none'; }
+}
+
+function showPauseNote(msg) {
+  var el = document.getElementById('pause-note');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function stepOnce() {
+  var loss = batchStep();
+  lossHist.push(loss);
+  updateUI(loss); updateChart(); showPauseNote('');
+}
+
+function stepN(n) {
+  updateMaxEpochs();
+  var target = epoch + n;
+  var batchPer = 2000;
+  function tick() {
+    for (var i = 0; i < batchPer && epoch < target; i++) {
+      var loss = batchStep();
+      lossHist.push(loss);
+      if (!isFinite(loss) || loss < CONVERGED || epoch >= maxEpochs) {
+        updateUI(loss); updateChart(); showPauseNote(''); return;
+      }
+    }
+    updateUI(lossHist[lossHist.length-1]); updateChart();
+    if (epoch < target) setTimeout(tick, 0);
+    else showPauseNote('');
+  }
+  tick();
+}
+
+function pauseTraining() { paused = true; running = false; }
+
+function resumeTraining() {
+  showPauseNote(''); paused = false; running = true;
+  lastPauseCheckpoint = Math.floor(epoch / autoPauseEvery) * autoPauseEvery;
+  setButtons('running');
+  document.getElementById('m-status').textContent = 'Training...';
+  doTrainLoop();
+}
+
+function runTraining() {
+  updateMaxEpochs();
+  running = true; paused = false;
+  lastPauseCheckpoint = Math.floor(epoch / autoPauseEvery) * autoPauseEvery;
+  setButtons('running');
+  document.getElementById('m-status').textContent = 'Training...';
+  showPauseNote('');
+  doTrainLoop();
+}
+
+function doTrainLoop() {
+  var batchPer = 500;
+  function tick() {
+    if (!running || paused) {
+      setButtons('paused');
+      document.getElementById('m-status').textContent = 'Paused at epoch ' + fmtEpoch(epoch);
+      showPauseNote('Auto-paused every 100k epochs. Adjust learning rate or max epochs, then hit Resume.');
+      updateUI(lossHist[lossHist.length - 1] || 0); updateChart(); return;
+    }
+    var loss;
+    for (var i = 0; i < batchPer; i++) {
+      loss = batchStep();
+      lossHist.push(loss);
+      if (!isFinite(loss)) {
+        running = false; setButtons('idle');
+        document.getElementById('m-status').textContent = 'Diverged at epoch ' + fmtEpoch(epoch);
+        showPauseNote('Loss diverged. Try a smaller learning rate.');
+        updateUI(loss); updateChart(); return;
+      }
+      if (loss < CONVERGED) {
+        running = false; setButtons('idle');
+        document.getElementById('m-status').textContent = 'Converged at epoch ' + fmtEpoch(epoch);
+        showPauseNote(''); updateUI(loss); updateChart(); return;
+      }
+      if (epoch >= maxEpochs) {
+        running = false; setButtons('idle');
+        document.getElementById('m-status').textContent = 'Max epochs (' + fmtEpoch(maxEpochs) + ') reached';
+        showPauseNote(''); updateUI(loss); updateChart(); return;
+      }
+      var nextCheckpoint = lastPauseCheckpoint + autoPauseEvery;
+      if (epoch >= nextCheckpoint) {
+        lastPauseCheckpoint = nextCheckpoint;
+        paused = true; running = false;
+        setButtons('paused');
+        document.getElementById('m-status').textContent = 'Auto-paused at epoch ' + fmtEpoch(epoch);
+        showPauseNote('Auto-paused at ' + fmtEpoch(epoch) + ' epochs. Loss = ' + formatLoss(loss) + '. Hit Resume to continue.');
+        updateUI(loss); updateChart(); return;
+      }
+    }
+    updateUI(loss); updateChart();
+    setTimeout(tick, 0);
+  }
+  tick();
+}
+
+function resetWeights() {
+  running = false; paused = false;
+  W = Object.assign({}, W0);
+  epoch = 0; lastPauseCheckpoint = 0; lossHist = [];
+  var loss = 0;
+  for (var i = 0; i < data.length; i++) { var f = forward(data[i], W); loss += 0.5 * Math.pow(f.pred - data[i].y, 2); }
+  loss /= data.length;
+  updateUI(loss);
+  chart.data.labels = []; chart.data.datasets[0].data = []; chart.update();
+  document.getElementById('m-status').textContent = 'Reset';
+  setButtons('idle'); showPauseNote('');
+}
+
+initChart();
+var initLoss = 0;
+for (var i = 0; i < data.length; i++) { var f = forward(data[i], W); initLoss += 0.5 * Math.pow(f.pred - data[i].y, 2); }
+updateUI(initLoss / data.length);
+setButtons('idle');
+</script>
+</body>
+</html>
